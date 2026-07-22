@@ -9,11 +9,11 @@
 | RF-01 | El sistema debe permitir a un estudiante registrarse mediante correo electrónico y contraseña. | AUT-01 |
 | RF-02 | El sistema debe validar que el correo electrónico no esté previamente registrado. | AUT-01 |
 | RF-03 | El sistema debe validar que la contraseña tenga un mínimo de 8 caracteres. | AUT-01 |
-| RF-04 | El sistema debe almacenar la contraseña de forma cifrada (hash). | AUT-01 |
+| RF-04 | El sistema debe almacenar la contraseña usando el algoritmo de hash **bcrypt (factor de costo 12)**; nunca en texto plano ni con cifrado reversible. | AUT-01 |
 | RF-05 | El sistema debe permitir el inicio de sesión mediante correo y contraseña. | AUT-02 |
-| RF-06 | El sistema debe generar un token de sesión válido por 7 días tras la autenticación exitosa. | AUT-02 |
-| RF-07 | El sistema debe bloquear temporalmente el inicio de sesión tras 5 intentos fallidos consecutivos. | AUT-02 |
-| RF-08 | El sistema debe invalidar el token de sesión al cerrar sesión. | AUT-02 |
+| RF-06 | El sistema debe generar un **JWT propio** firmado por el backend, válido por 7 días, y registrar la sesión activa en la tabla `sesiones`. | AUT-02 |
+| RF-07 | El sistema debe bloquear temporalmente el inicio de sesión tras 5 intentos fallidos consecutivos, usando un contador persistido por cuenta de usuario. | AUT-02 |
+| RF-08 | El sistema debe invalidar el token de sesión al cerrar sesión, marcando la sesión como revocada; un JWT cuya sesión está revocada se rechaza aunque no haya expirado. | AUT-02 |
 
 ---
 
@@ -57,7 +57,7 @@
 | RF | Descripción | HU de origen |
 |---|---|---|
 | RF-23 | El sistema debe permitir autorizar el acceso de lectura a la cuenta de Gmail del estudiante mediante OAuth 2.0. | GML-01 |
-| RF-24 | El sistema debe almacenar el token de acceso de Gmail de forma cifrada en el backend. | GML-01 |
+| RF-24 | El sistema debe cifrar los tokens de acceso y refresco de Gmail con **AES-256-GCM** antes de persistirlos en el backend; la clave de cifrado reside en variable de entorno, nunca en el repositorio ni en el cliente móvil. | GML-01 |
 | RF-25 | El sistema debe permitir revocar el acceso a Gmail desde el perfil del estudiante. | GML-01 |
 | RF-26 | El sistema debe identificar correos provenientes de remitentes bancarios configurados. | GML-02 |
 | RF-27 | El sistema debe extraer el monto y tipo de movimiento de los correos bancarios identificados. | GML-02 |
@@ -85,7 +85,7 @@
 |---|---|---|
 | RF-36 | El sistema debe permitir asignar una categoría predefinida a cada transacción de egreso. | CAT-01 |
 | RF-37 | El sistema debe permitir consultar el monto total de gastos agrupado por categoría. | CAT-01 |
-| RF-38 | El sistema debe marcar automáticamente como "gasto hormiga" toda transacción de egreso igual o menor a un umbral configurable. | CAT-02 |
+| RF-38 | El sistema debe marcar automáticamente como "gasto hormiga" toda transacción de egreso igual o menor a un umbral configurable, y **registrar en la transacción el valor de umbral aplicado** (`umbral_hormiga_aplicado`) para reproducibilidad. El umbral permanece congelado durante la ventana de medición. | CAT-02 |
 | RF-39 | El sistema debe calcular el porcentaje de gastos hormiga sobre el total de egresos del periodo. | CAT-02 |
 
 ---
@@ -115,5 +115,27 @@
 |---|---|---|
 | RF-45 | El sistema debe registrar automáticamente los errores no controlados ocurridos durante su ejecución. | CAL-01 |
 | RF-46 | El sistema debe permitir al investigador consultar el conteo de errores agrupado por módulo y periodo. | CAL-01 |
+
+---
+
+## MÓDULO: Consentimiento Informado
+
+| RF | Descripción | HU de origen |
+|---|---|---|
+| RF-47 | El sistema debe presentar el texto de consentimiento informado tras el registro y antes de habilitar cualquier funcionalidad financiera. | CON-01 |
+| RF-48 | El sistema debe registrar la fecha y la versión del texto de consentimiento aceptado por el estudiante. | CON-01 |
+| RF-49 | El sistema debe impedir el acceso a las funcionalidades financieras mientras no exista una aceptación de consentimiento registrada. | CON-01 |
+
+---
+
+## MÓDULO: Seguridad y Control de Acceso *(transversal)*
+
+> Estos requisitos aplican de forma horizontal a todos los módulos que operan sobre recursos de un usuario (transacciones, metas, sugerencias, conexión de Gmail, encuesta).
+
+| RF | Descripción | HU de origen |
+|---|---|---|
+| RF-50 | El sistema debe verificar, antes de leer, modificar o eliminar cualquier recurso, que el usuario autenticado sea su propietario; si no lo es, debe responder como "recurso no encontrado" (evita fuga de existencia — prevención de IDOR). | TRX-02, AHO-02, CNF-01, GML-01 |
+| RF-51 | El sistema debe validar el JWT y el estado de la sesión (no revocada, no expirada) en cada petición a un endpoint protegido, antes de ejecutar el caso de uso. | AUT-02 |
+| RF-52 | El sistema debe transmitir toda comunicación entre la app móvil y el backend, y entre el backend y los servicios externos, exclusivamente sobre HTTPS/TLS. | AUT-02, OCR-01, GML-01 |
 
 ---

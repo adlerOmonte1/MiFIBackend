@@ -21,7 +21,7 @@ El sistema debe permitir el autorregistro de estudiantes mediante correo electr�
 
 ## Detalles
 - El correo debe cumplir un formato válido (usuario@dominio).
-- La contraseña se almacena cifrada (hash); nunca en texto plano.
+- La contraseña se almacena con un hash de **bcrypt (factor de costo 12)**; nunca en texto plano ni con cifrado reversible.
 - Todos los campos del formulario son obligatorios; no se admite registro parcial.
 
 ## Criterios de Aceptación
@@ -51,9 +51,9 @@ El sistema debe permitir el autorregistro de estudiantes mediante correo electr�
 El sistema debe validar las credenciales del estudiante contra la información almacenada y mantener la sesión activa mediante un token, de manera que el usuario no deba autenticarse repetidamente durante el periodo de uso continuo de la aplicación (fase de intervención X de la investigación).
 
 ## Detalles
-- El token de sesión expira tras 7 días de inactividad, por seguridad.
-- Tras 5 intentos fallidos consecutivos, el sistema bloquea temporalmente los nuevos intentos de inicio de sesión.
-- Cerrar sesión invalida el token activo de forma inmediata.
+- El token de sesión es un **JWT propio** firmado por el backend, con expiración de 7 días; cada sesión activa se registra en la tabla `sesiones` para poder revocarla.
+- Tras 5 intentos fallidos consecutivos, el sistema bloquea temporalmente los nuevos intentos de inicio de sesión (contador persistido en la cuenta del usuario).
+- Cerrar sesión invalida el token activo de forma inmediata, marcando la sesión correspondiente como revocada; un JWT cuya sesión fue revocada se rechaza aunque no haya expirado.
 
 ## Criterios de Aceptación
 
@@ -62,6 +62,37 @@ El sistema debe validar las credenciales del estudiante contra la información a
 > **CA02.** Dado que un estudiante ingresa un correo o contraseña incorrectos, cuando intenta iniciar sesión, entonces el sistema rechaza el acceso y muestra un mensaje de error genérico, sin indicar cuál dato fue incorrecto.
 
 > **CA03.** Dado que un estudiante ha iniciado sesión previamente, cuando vuelve a abrir la aplicación dentro del periodo de validez del token, entonces el sistema lo mantiene autenticado sin solicitar sus credenciales nuevamente.
+
+---
+
+# CON-01 — Aceptación de consentimiento informado
+
+| Campo | Descripción |
+|:--|:--|
+| **Identificador** | CON-01 |
+| **Épica** | Autenticación y Gestión de Usuario |
+| **Nombre** | Aceptación de consentimiento informado |
+| **Prioridad** | Alta |
+| **Estado** | Pendiente |
+
+## Historia de Usuario
+**Como** estudiante participante del estudio, **quiero** leer y aceptar explícitamente el consentimiento informado antes de usar la aplicación, **para** conocer qué datos se recolectan y con qué finalidad, y dejar constancia auditable de mi autorización.
+
+## Descripción
+Antes de habilitar cualquier funcionalidad financiera, el sistema debe presentar el texto de consentimiento informado (finalidad de la investigación, datos recolectados, tratamiento de los datos de Gmail, y derechos del participante conforme a la **Ley N.º 29733 de Protección de Datos Personales**) y registrar la aceptación con fecha y versión del texto, como evidencia para el comité de ética de la investigación.
+
+## Detalles
+- El consentimiento se solicita una única vez, inmediatamente después del registro (AUT-01) y antes del primer acceso al dashboard.
+- Se almacena la **versión** del texto aceptado, para trazabilidad si el documento se actualiza durante el estudio.
+- Sin una aceptación registrada, el sistema no habilita el acceso a las funcionalidades financieras.
+
+## Criterios de Aceptación
+
+> **CA01.** Dado que un estudiante recién registrado no ha aceptado el consentimiento, cuando ingresa por primera vez, entonces el sistema muestra el texto de consentimiento y no permite continuar hasta que lo acepte explícitamente.
+
+> **CA02.** Dado que un estudiante acepta el consentimiento, cuando confirma la aceptación, entonces el sistema almacena la fecha y la versión del texto aceptado y habilita el acceso a la aplicación.
+
+> **CA03.** Dado que un estudiante no acepta el consentimiento, cuando intenta omitir el paso, entonces el sistema mantiene bloqueado el acceso a las funcionalidades financieras.
 
 ---
 
@@ -361,7 +392,8 @@ El sistema debe ofrecer un conjunto predefinido de categorías (comida, transpor
 El sistema debe marcar automáticamente como "gasto hormiga" toda transacción de egreso cuyo monto sea menor o igual a un umbral configurable, y calcular el porcentaje que estos gastos representan sobre el total de egresos del periodo consultado.
 
 ## Detalles
-- El umbral por defecto es S/ 15, pero es ajustable por el investigador para fines de calibración del instrumento durante el piloto.
+- El umbral por defecto es S/ 15. Es ajustable por el investigador **únicamente durante la fase de calibración previa al piloto**; una vez iniciada la medición (pretest O₁) el umbral queda **congelado** para todo el estudio, de modo que O₁ y O₂ sean comparables (validez interna del instrumento).
+- Cada transacción guarda el valor de umbral con el que fue evaluada (`umbral_hormiga_aplicado`), de modo que la marca sea reproducible y auditable aunque el umbral cambie entre estudios distintos.
 - La regla aplica únicamente a transacciones de tipo egreso; nunca a ingresos.
 - El marcado como "gasto hormiga" es automático; el estudiante no puede desmarcarlo manualmente (garantiza consistencia del indicador).
 
