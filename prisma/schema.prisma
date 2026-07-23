@@ -1,7 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +6,169 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // La URL de conexión se resuelve desde prisma.config.ts -> process.env["DATABASE_URL"]
+}
+
+// USUARIOS
+model Usuario {
+  id                     String    @id @default(uuid())
+  nombre                 String    @db.VarChar(150)
+  correo                 String    @unique @db.VarChar(150)
+  passwordHash           String    @map("password_hash") @db.VarChar(255) // bcrypt cost 12 (D-02)
+  rol                    String    @db.VarChar(20) // CHECK IN ('estudiante','investigador')
+  intentosFallidos       Int       @default(0) @map("intentos_fallidos") @db.SmallInt // RF-07
+  bloqueadoHasta         DateTime? @map("bloqueado_hasta")
+  consentimientoAceptado Boolean   @default(false) @map("consentimiento_aceptado") // RF-47..49
+  fechaConsentimiento    DateTime? @map("fecha_consentimiento")
+  versionConsentimiento  String?   @map("version_consentimiento") @db.VarChar(20)
+  fechaRegistro          DateTime  @default(now()) @map("fecha_registro")
+
+  sesiones             Sesion[]
+  transacciones        Transaccion[]
+  metasAhorro          MetaAhorro[]
+  sugerenciasTransaccion SugerenciaTransaccion[]
+  conexionGmail        ConexionGmail?
+  encuestaSus          EncuestaSus?
+  presupuestosCategoria PresupuestoCategoria[]
+
+  @@map("usuarios")
+}
+
+// SESIONES  (D-03: JWT revocable — RF-06, RF-08, RF-51)
+model Sesion {
+  id              String   @id @default(uuid())
+  usuarioId       String   @map("usuario_id")
+  jti             String   @unique @db.VarChar(64)
+  fechaCreacion   DateTime @default(now()) @map("fecha_creacion")
+  fechaExpiracion DateTime @map("fecha_expiracion")
+  revocada        Boolean  @default(false)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, revocada])
+  @@map("sesiones")
+}
+
+// CATEGORIAS
+model Categoria {
+  id             String  @id @default(uuid())
+  nombre         String  @db.VarChar(50)
+  esPredefinida  Boolean @default(true) @map("es_predefinida")
+
+  transacciones         Transaccion[]
+  presupuestosCategoria PresupuestoCategoria[]
+
+  @@map("categorias")
+}
+
+// TRANSACCIONES
+model Transaccion {
+  id                     String    @id @default(uuid())
+  usuarioId              String    @map("usuario_id")
+  categoriaId            String    @map("categoria_id")
+  metaAhorroId           String?   @map("meta_ahorro_id")
+  monto                  Decimal   @db.Decimal(10, 2) // CHECK (monto > 0) — validado en entidad de dominio
+  tipo                   String    @db.VarChar(10) // CHECK IN ('ingreso','egreso')
+  fecha                  DateTime  @db.Date // CHECK (fecha <= CURRENT_DATE)
+  origen                 String    @default("manual") @db.VarChar(10) // CHECK IN ('manual','ocr','gmail')
+  esGastoHormiga         Boolean   @default(false) @map("es_gasto_hormiga")
+  umbralHormigaAplicado  Decimal?  @map("umbral_hormiga_aplicado") @db.Decimal(10, 2) // snapshot, D-08
+  imagenUrl              String?   @map("imagen_url")
+  fechaCreacion          DateTime  @default(now()) @map("fecha_creacion")
+
+  usuario   Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  categoria Categoria  @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  metaAhorro MetaAhorro? @relation(fields: [metaAhorroId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId, fecha])
+  @@index([metaAhorroId])
+  @@map("transacciones")
+}
+
+// METAS_AHORRO
+model MetaAhorro {
+  id             String   @id @default(uuid())
+  usuarioId      String   @map("usuario_id")
+  nombre         String   @db.VarChar(100)
+  montoObjetivo  Decimal  @map("monto_objetivo") @db.Decimal(10, 2) // CHECK (> 0)
+  fechaLimite    DateTime @map("fecha_limite") @db.Date // CHECK (> CURRENT_DATE al crear)
+  estado         String   @default("activa") @db.VarChar(20) // CHECK IN ('activa','cumplida','inactiva')
+  fechaCreacion  DateTime @default(now()) @map("fecha_creacion")
+
+  usuario       Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  transacciones Transaccion[]
+
+  @@map("metas_ahorro")
+}
+
+// SUGERENCIAS_TRANSACCION  (OCR / Gmail, pendientes de confirmación — CNF-01)
+model SugerenciaTransaccion {
+  id               String   @id @default(uuid())
+  usuarioId        String   @map("usuario_id")
+  monto            Decimal  @db.Decimal(10, 2)
+  tipo             String   @db.VarChar(10) // CHECK IN ('ingreso','egreso')
+  fecha            DateTime @db.Date
+  origen           String   @db.VarChar(10) // CHECK IN ('ocr','gmail')
+  estado           String   @default("pendiente") @db.VarChar(20) // CHECK IN ('pendiente','confirmada','descartada')
+  fechaExpiracion  DateTime @map("fecha_expiracion") // 24h — RF-22
+  fechaCreacion    DateTime @default(now()) @map("fecha_creacion")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, estado])
+  @@map("sugerencias_transaccion")
+}
+
+// CONEXIONES_GMAIL 
+model ConexionGmail {
+  id             String   @id @default(uuid())
+  usuarioId      String   @unique @map("usuario_id")
+  tokenAcceso    String   @map("token_acceso") // cifrado antes de persistir
+  tokenRefresco  String   @map("token_refresco") // cifrado antes de persistir
+  estado         String   @default("activo") @db.VarChar(20) // CHECK IN ('activo','revocado')
+  fechaConexion  DateTime @default(now()) @map("fecha_conexion")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("conexiones_gmail")
+}
+
+// ENCUESTAS_SUS
+model EncuestaSus {
+  id              String   @id @default(uuid())
+  usuarioId       String   @unique @map("usuario_id")
+  respuestas      Json
+  puntaje         Decimal  @db.Decimal(5, 2) // CHECK (BETWEEN 0 AND 100)
+  fechaRespuesta  DateTime @default(now()) @map("fecha_respuesta")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("encuestas_sus")
+}
+
+// ─────────────────────────────────────────────
+// REGISTROS_ERROR
+// ─────────────────────────────────────────────
+model RegistroError {
+  id           String   @id @default(uuid())
+  fecha        DateTime @default(now())
+  modulo       String   @db.VarChar(50)
+  descripcion  String
+
+  @@map("registros_error")
+}
+
+// PRESUPUESTOS_CATEGORIA  (reservada — sprint futuro)
+model PresupuestoCategoria {
+  id            String @id @default(uuid())
+  usuarioId     String @map("usuario_id")
+  categoriaId   String @map("categoria_id")
+  montoLimite   Decimal @map("monto_limite") @db.Decimal(10, 2) // CHECK (> 0)
+  mes           Int    @db.SmallInt // CHECK (BETWEEN 1 AND 12)
+  anio          Int    @db.SmallInt
+
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  categoria Categoria @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+
+  @@map("presupuestos_categoria")
 }
