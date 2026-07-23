@@ -1,0 +1,48 @@
+# --- Dependencias ---
+node_modules/
+
+# --- Variables de entorno y secretos ---
+# Nunca subir credenciales: JWT_SECRET, ENCRYPTION_KEY, DATABASE_URL, etc.
+.env
+.env.local
+.env.*.local
+
+# Credenciales de Google Cloud (Vision API / Gmail OAuth) — RF-24, D-06
+gcloud-*.json
+*-service-account*.json
+credentials.json
+
+# --- Prisma ---
+# Cliente generado (se regenera con `npx prisma generate` / `migrate dev`)
+/generated/prisma
+
+# --- Build / salida compilada ---
+dist/
+build/
+
+# --- Tests / cobertura ---
+coverage/
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+
+# --- Editor / IDE ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# --- Sistema operativo ---
+# Windows
+Thumbs.db
+Desktop.ini
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# --- Temporales ---
+*.tmp
+*.temp
+.cache/
