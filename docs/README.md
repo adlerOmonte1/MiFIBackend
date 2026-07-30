@@ -63,6 +63,8 @@ Controllers (Presentación)
 | 6 | [DiagramaComponentes.md](DiagramaComponentes.md) | Arquitectura técnica y decisiones de despliegue | Para entender cómo se conectan los componentes |
 | 7 | [DiagramaSecuencias.md](DiagramaSecuencias.md) | Flujos críticos: OCR, confirmación, Gmail, ahorro, login | Para implementar la orquestación de un caso de uso |
 | 8 | [EspecificacionesCasosUsoCriticos.md](EspecificacionesCasosUsoCriticos.md) | Flujos básico/alterno/excepción de los UC críticos | Para el detalle fino de un caso de uso |
+| 9 | [RequerimientosNoFuncionales.md](RequerimientosNoFuncionales.md) | Catálogo RNF (ISO 25010): rendimiento, fiabilidad, seguridad, usabilidad, mantenibilidad, portabilidad | Para fijar métricas medibles no cubiertas por los RF |
+| 10 | [openapi.yaml](openapi.yaml) | Contrato OpenAPI 3.0 de todos los endpoints del backend | Para implementar o consumir un endpoint concreto (fuente de verdad del contrato API) |
 | — | [../PlanTrabajo.md](../PlanTrabajo.md) | Plan de trabajo secuencial por fases (ISO 12207) | Para ubicar en qué fase estamos |
 
 ---
@@ -142,10 +144,9 @@ El software produce los datos; la matriz de operacionalización completa vive en
 ## 9. Estado del proyecto y pendientes
 
 - **Fase actual:** Fase 1 — Diseño (ISO/IEC 12207). El paquete de diseño está casi completo.
-- **Pendientes de la Fase 1 para poder cerrarla** (definidos en [PlanTrabajo.md](../PlanTrabajo.md), aún no generados):
-  1. **Catálogo de Requisitos No Funcionales (RNF)** — rendimiento, seguridad, usabilidad, con métricas medibles.
-  2. **Contrato OpenAPI/Swagger** de todos los endpoints.
-  3. **Wireframes** de las 6–8 pantallas principales (base del SUS).
+- **Generados:** catálogo de Requisitos No Funcionales ([RequerimientosNoFuncionales.md](RequerimientosNoFuncionales.md)) y contrato OpenAPI de todos los endpoints ([openapi.yaml](openapi.yaml)).
+- **Pendiente de la Fase 1 para poder cerrarla** (definido en [PlanTrabajo.md](../PlanTrabajo.md), aún no generado):
+  1. **Wireframes** de las 6–8 pantallas principales (base del SUS).
 
 ---
 

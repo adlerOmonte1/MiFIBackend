@@ -1,0 +1,776 @@
+openapi: 3.0.3
+info:
+  title: MiFi API
+  description: >
+    Backend de MiFi — aplicación móvil de gestión financiera personal para estudiantes,
+    instrumento de una investigación de tesis. Contrato de API derivado de
+    RequerimientosFuncionales.md, DiagramaEntidadRelacion.md, DiagramaCasosUso.md
+    y EspecificacionesCasosUsoCriticos.md. No inventa endpoints ni campos fuera de
+    esos documentos; ver README.md §10 para las instrucciones de uso de este
+    contrato por agentes de IA.
+  version: "0.1.0"
+  contact:
+    name: Documentación de diseño MiFi
+    url: https://github.com/adlerOmonte1/MiFIBackend/blob/main/docs/README.md
+
+servers:
+  - url: http://localhost:3000/api
+    description: Entorno local de desarrollo
+  - url: https://api-mifi.onrender.com/api
+    description: Producción (Render) — URL de ejemplo, ajustar al dominio real de despliegue
+
+tags:
+  - name: Autenticación
+    description: RF-01 a RF-08 (AUT-01, AUT-02)
+  - name: Consentimiento
+    description: RF-47 a RF-49 (CON-01)
+  - name: Transacciones
+    description: RF-09 a RF-15 (TRX-01, TRX-02)
+  - name: Categorías
+    description: RF-36, RF-37 (CAT-01)
+  - name: Ahorro
+    description: RF-30 a RF-35 (AHO-01, AHO-02)
+  - name: OCR
+    description: RF-16 a RF-19 (OCR-01)
+  - name: Sugerencias
+    description: RF-20 a RF-22 (CNF-01)
+  - name: Gmail
+    description: RF-23 a RF-25 (GML-01)
+  - name: Dashboard
+    description: RF-40, RF-41 (DSH-01)
+  - name: Encuesta SUS
+    description: RF-42 a RF-44 (USA-01)
+  - name: Errores
+    description: RF-45, RF-46 (CAL-01) — solo rol investigador
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ───────────────────────── AUTENTICACIÓN ─────────────────────────
+  /auth/registro:
+    post:
+      tags: [Autenticación]
+      summary: Registrar nueva cuenta de estudiante (RF-01 a RF-04, UC-AUT-01)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, correo, password]
+              properties:
+                nombre: { type: string, maxLength: 150 }
+                correo: { type: string, format: email, maxLength: 150 }
+                password: { type: string, format: password, minLength: 8, description: "RF-03, mínimo 8 caracteres" }
+      responses:
+        "201":
+          description: Cuenta creada; sesión iniciada automáticamente. El acceso a funcionalidades financieras permanece bloqueado hasta aceptar el consentimiento (RF-49).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, description: JWT válido por 7 días (RF-06) }
+                  usuario: { $ref: "#/components/schemas/Usuario" }
+        "400": { $ref: "#/components/responses/ValidacionError" }
+        "409":
+          description: El correo ya está registrado (RF-02)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Iniciar sesión (RF-05 a RF-07, UC-AUT-02)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo, password]
+              properties:
+                correo: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: Autenticado. Se crea una fila en `sesiones` con el `jti` del token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  usuario: { $ref: "#/components/schemas/Usuario" }
+        "401":
+          description: Correo o contraseña incorrectos — mensaje genérico, sin indicar cuál dato falló (AUT-02/CA02).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "423":
+          description: Cuenta bloqueada temporalmente tras 5 intentos fallidos (RF-07, D-04).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /auth/logout:
+    post:
+      tags: [Autenticación]
+      summary: Cerrar sesión — revoca el JWT actual (RF-08, UC-AUT-02)
+      responses:
+        "204": { description: Sesión revocada. El `jti` queda marcado `revocada=true` en la tabla `sesiones`. }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+
+  /usuarios/me:
+    get:
+      tags: [Autenticación]
+      summary: Perfil del usuario autenticado (incluye estado de consentimiento)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Usuario" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+
+  # ───────────────────────── CONSENTIMIENTO ─────────────────────────
+  /consentimiento:
+    post:
+      tags: [Consentimiento]
+      summary: Aceptar el consentimiento informado (RF-47 a RF-49, UC-CON-01)
+      description: >
+        Habilita el acceso a las funcionalidades financieras. Sin esta aceptación,
+        todo endpoint marcado como "requiere consentimiento" responde 403
+        (código CONSENTIMIENTO_REQUERIDO).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [versionTexto]
+              properties:
+                versionTexto: { type: string, description: Versión del texto de consentimiento mostrado y aceptado (RF-48) }
+      responses:
+        "200":
+          description: Consentimiento registrado.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Usuario" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "409": { description: El usuario ya había aceptado el consentimiento previamente. }
+
+  # ───────────────────────── TRANSACCIONES ─────────────────────────
+  /transacciones:
+    post:
+      tags: [Transacciones]
+      summary: Registrar transacción manual (RF-09 a RF-12, UC-TRX-01)
+      description: >
+        `origen` se fija en "manual". Si `tipo` es "egreso", el backend evalúa
+        el umbral de gasto hormiga vigente y guarda su snapshot en
+        `umbral_hormiga_aplicado` (RF-38, D-08) — el cliente nunca envía estos
+        dos campos.
+      responses:
+        "201": { $ref: "#/components/responses/TransaccionCreada" }
+        "400": { $ref: "#/components/responses/ValidacionError" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransaccionInput" }
+    get:
+      tags: [Transacciones]
+      summary: Listar transacciones del usuario autenticado
+      description: Base del listado que alimenta el indicador "N.º de registros por semana" (RF-09/TRX-01, DSH-01).
+      parameters:
+        - $ref: "#/components/parameters/PeriodoFiltro"
+        - name: tipo
+          in: query
+          schema: { type: string, enum: [ingreso, egreso] }
+        - name: categoriaId
+          in: query
+          schema: { type: string, format: uuid }
+        - $ref: "#/components/parameters/Pagina"
+        - $ref: "#/components/parameters/TamanoPagina"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datos:
+                    type: array
+                    items: { $ref: "#/components/schemas/Transaccion" }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
+
+  /transacciones/{id}:
+    parameters:
+      - $ref: "#/components/parameters/RecursoId"
+    get:
+      tags: [Transacciones]
+      summary: Obtener una transacción
+      responses:
+        "200": { $ref: "#/components/responses/TransaccionCreada" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+    put:
+      tags: [Transacciones]
+      summary: Editar transacción (RF-13, RF-15, UC-TRX-02)
+      description: Recalcula dashboard y meta de ahorro asociada tras el cambio (RF-15).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransaccionInput" }
+      responses:
+        "200": { $ref: "#/components/responses/TransaccionCreada" }
+        "400": { $ref: "#/components/responses/ValidacionError" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+    delete:
+      tags: [Transacciones]
+      summary: Eliminar transacción (RF-14, RF-15, UC-TRX-02)
+      description: Confirmación previa del usuario ocurre en el cliente (RF-14); este endpoint elimina de forma permanente y dispara el recálculo de dashboard/meta de ahorro (RF-15).
+      responses:
+        "204": { description: Eliminada. }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  # ───────────────────────── CATEGORÍAS ─────────────────────────
+  /categorias:
+    get:
+      tags: [Categorías]
+      summary: Listar categorías predefinidas (RF-36, CAT-01)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Categoria" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+
+  # ───────────────────────── AHORRO ─────────────────────────
+  /metas-ahorro:
+    post:
+      tags: [Ahorro]
+      summary: Crear meta de ahorro (RF-30, RF-31, RF-32, UC-AHO-01)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, montoObjetivo, fechaLimite]
+              properties:
+                nombre: { type: string, maxLength: 100 }
+                montoObjetivo: { type: number, format: double, exclusiveMinimum: 0, description: "RF-31" }
+                fechaLimite: { type: string, format: date, description: "Debe ser futura (RF-31)" }
+      responses:
+        "201": { $ref: "#/components/responses/MetaAhorroCreada" }
+        "400": { $ref: "#/components/responses/ValidacionError" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
+    get:
+      tags: [Ahorro]
+      summary: Listar metas de ahorro con progreso calculado en tiempo real (RF-32, RF-33, RF-34, UC-AHO-02)
+      parameters:
+        - name: estado
+          in: query
+          schema: { type: string, enum: [activa, cumplida, inactiva] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MetaAhorroConProgreso" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
+
+  /metas-ahorro/{id}:
+    parameters:
+      - $ref: "#/components/parameters/RecursoId"
+    get:
+      tags: [Ahorro]
+      summary: Ver progreso de una meta de ahorro (UC-AHO-02)
+      responses:
+        "200": { $ref: "#/components/responses/MetaAhorroCreada" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+    delete:
+      tags: [Ahorro]
+      summary: Eliminar o desactivar meta de ahorro
+      description: >
+        Si la meta ya tiene transacciones vinculadas, el sistema la marca como
+        "inactiva" en lugar de eliminarla (regla de negocio de AHO-01, detalle
+        del backlog); si no tiene transacciones vinculadas, se elimina de forma
+        permanente.
+      responses:
+        "200":
+          description: Meta marcada como inactiva (tenía transacciones vinculadas).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetaAhorroConProgreso" }
+        "204": { description: Meta eliminada (sin transacciones vinculadas). }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  # ───────────────────────── OCR ─────────────────────────
+  /ocr/escanear:
+    post:
+      tags: [OCR]
+      summary: Escanear boleta con OCR (RF-16 a RF-19, UC-OCR-01)
+      description: >
+        Envía la imagen a Google Vision API vía backend (D-09: credenciales
+        nunca en el cliente). Genera una `SugerenciaTransaccion` con
+        `origen="ocr"` que debe pasar por el flujo de confirmación
+        (POST /sugerencias/{id}/confirmar o /descartar, UC-CNF-01) antes de
+        persistirse como transacción. Tiempo máximo de respuesta: 10 s
+        (ver RequerimientosNoFuncionales.md, RNF-02).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [imagen]
+              properties:
+                imagen: { type: string, format: binary }
+      responses:
+        "201":
+          description: Sugerencia generada con el monto detectado, editable antes de confirmar (RF-18).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SugerenciaTransaccion" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
+        "422":
+          description: >
+            No se pudo detectar un monto válido en la imagen (FE1/FE3 de
+            UC-OCR-01). El cliente debe ofrecer "Reintentar" o derivar a
+            registro manual (RF-19).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  # ───────────────────────── SUGERENCIAS (CNF-01) ─────────────────────────
+  /sugerencias:
+    get:
+      tags: [Sugerencias]
+      summary: Listar sugerencias pendientes de confirmación (RF-20, UC-CNF-01)
+      description: Incluye sugerencias generadas por OCR y por importación de Gmail. Las expiradas (>24h, RF-22) no se listan.
+      parameters:
+        - name: estado
+          in: query
+          schema: { type: string, enum: [pendiente, confirmada, descartada], default: pendiente }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SugerenciaTransaccion" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+
+  /sugerencias/{id}/confirmar:
+    parameters:
+      - $ref: "#/components/parameters/RecursoId"
+    post:
+      tags: [Sugerencias]
+      summary: Confirmar (con o sin edición) una sugerencia como transacción (RF-21, UC-CNF-01 flujo básico/FA1)
+      description: >
+        Crea la transacción definitiva con los valores de la sugerencia o los
+        editados por el estudiante. `categoriaId` es obligatorio porque
+        `transacciones.categoria_id` no admite nulo (ver DiagramaEntidadRelacion.md).
+        El `usuario_id` de la transacción resultante se toma del token, nunca
+        del cliente (RF-50).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [categoriaId]
+              properties:
+                monto: { type: number, format: double, description: "Sobrescribe el monto detectado si el estudiante lo editó" }
+                tipo: { type: string, enum: [ingreso, egreso] }
+                fecha: { type: string, format: date }
+                categoriaId: { type: string, format: uuid }
+                metaAhorroId: { type: string, format: uuid, nullable: true }
+      responses:
+        "201": { $ref: "#/components/responses/TransaccionCreada" }
+        "400": { $ref: "#/components/responses/ValidacionError" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "410":
+          description: La sugerencia expiró a las 24 horas y ya fue descartada automáticamente (RF-22, FE1 de UC-CNF-01).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /sugerencias/{id}/descartar:
+    parameters:
+      - $ref: "#/components/parameters/RecursoId"
+    post:
+      tags: [Sugerencias]
+      summary: Descartar una sugerencia sin persistir transacción (RF-21, UC-CNF-01 FA2)
+      responses:
+        "204": { description: Sugerencia eliminada, sin generar ningún registro. }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  # ───────────────────────── GMAIL ─────────────────────────
+  /gmail/conectar:
+    get:
+      tags: [Gmail]
+      summary: Iniciar conexión OAuth 2.0 con Gmail (RF-23, UC-GML-01)
+      description: Devuelve la URL de autorización de Google (scope `gmail.readonly` únicamente).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  urlAutorizacion: { type: string, format: uri }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
+
+  /gmail/callback:
+    get:
+      tags: [Gmail]
+      summary: Callback OAuth de Google (uso interno del flujo de autorización)
+      description: >
+        Google redirige aquí tras la autorización. El backend intercambia el
+        `code` por tokens, los cifra con AES-256-GCM (RF-24, D-06) y los
+        persiste en `conexiones_gmail`; luego redirige de vuelta a la app móvil.
+        No se invoca directamente desde el cliente.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema: { type: string }
+        - name: state
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "302": { description: Redirección a la app móvil (deep link) tras completar o cancelar la autorización (CA02 de GML-01). }
+
+  /gmail/estado:
+    get:
+      tags: [Gmail]
+      summary: Consultar estado de la conexión con Gmail
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConexionGmail" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+
+  /gmail/conexion:
+    delete:
+      tags: [Gmail]
+      summary: Revocar el acceso a Gmail (RF-25, UC-GML-01 CA03)
+      description: Elimina el token almacenado y detiene la lectura futura de notificaciones.
+      responses:
+        "204": { description: Acceso revocado. }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { description: El usuario no tiene una conexión de Gmail activa. }
+
+  # ───────────────────────── DASHBOARD ─────────────────────────
+  /dashboard/resumen:
+    get:
+      tags: [Dashboard]
+      summary: Resumen consolidado del dashboard financiero (RF-37, RF-39, RF-40, RF-41, UC-DSH-01)
+      description: >
+        Incluye ingresos, egresos y ahorro del periodo (RF-40), monto total
+        agrupado por categoría (RF-37, CAT-01) y el porcentaje de gastos
+        hormiga sobre el total de egresos del periodo (RF-39, CAT-02). Todos
+        los valores se calculan en tiempo real, sin precálculo (detalle de
+        DSH-01).
+      parameters:
+        - $ref: "#/components/parameters/PeriodoFiltro"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardResumen" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
+
+  # ───────────────────────── ENCUESTA SUS ─────────────────────────
+  /encuesta-sus/estado:
+    get:
+      tags: [Encuesta SUS]
+      summary: Verificar si el estudiante ya respondió la encuesta SUS (RF-44, UC-USA-01 CA03)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  completada: { type: boolean }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+
+  /encuesta-sus:
+    post:
+      tags: [Encuesta SUS]
+      summary: Enviar respuestas de la encuesta SUS (RF-42, RF-43, RF-44, UC-USA-01)
+      description: >
+        El backend calcula el puntaje con la fórmula estándar SUS y lo
+        persiste; las respuestas individuales no se devuelven al estudiante
+        después del envío (detalle de USA-01), solo la confirmación.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [respuestas]
+              properties:
+                respuestas:
+                  type: array
+                  minItems: 10
+                  maxItems: 10
+                  items: { type: integer, minimum: 1, maximum: 5 }
+                  description: 10 ítems del cuestionario estándar SUS, escala Likert 1-5
+      responses:
+        "201":
+          description: Respuesta registrada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fechaRespuesta: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/ValidacionError" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "409":
+          description: El estudiante ya respondió la encuesta previamente (RF-44).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  # ───────────────────────── ERRORES (INVESTIGADOR) ─────────────────────────
+  /errores/resumen:
+    get:
+      tags: [Errores]
+      summary: Consultar conteo de errores agrupado por módulo y periodo (RF-46, UC-CAL-01)
+      description: Requiere rol `investigador` (RF-46, D-05 no aplica aquí porque `registros_error` no tiene `usuario_id` — ver ERD).
+      parameters:
+        - name: modulo
+          in: query
+          schema: { type: string }
+        - name: desde
+          in: query
+          schema: { type: string, format: date }
+        - name: hasta
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    modulo: { type: string }
+                    periodo: { type: string, description: "Agrupación por día/semana/mes según los parámetros desde/hasta" }
+                    total: { type: integer }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403":
+          description: El usuario autenticado no tiene rol `investigador`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        JWT propio del backend (D-01), no de Supabase Auth. El middleware de
+        autenticación valida la firma y luego confirma en `sesiones` que el
+        `jti` exista, no esté revocado y no haya expirado (RF-51).
+
+  parameters:
+    RecursoId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PeriodoFiltro:
+      name: periodo
+      in: query
+      schema: { type: string, enum: [semana, mes], default: mes }
+      description: RF-41 — filtro de periodo del dashboard
+    Pagina:
+      name: pagina
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    TamanoPagina:
+      name: tamanoPagina
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+  responses:
+    ValidacionError:
+      description: Error de validación de los datos enviados.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NoAutenticado:
+      description: Falta el token, es inválido, expiró o su sesión fue revocada (RF-51).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NoEncontrado:
+      description: >
+        El recurso no existe o no pertenece al usuario autenticado — mismo
+        código de estado en ambos casos, por diseño anti-IDOR (RF-50, D-05).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    ConsentimientoRequerido:
+      description: El usuario no ha aceptado el consentimiento informado; las funcionalidades financieras permanecen bloqueadas (RF-49).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    TransaccionCreada:
+      description: OK
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Transaccion" }
+    MetaAhorroCreada:
+      description: OK
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/MetaAhorroConProgreso" }
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        codigo: { type: string, description: "Código estable para el cliente, ej. CONSENTIMIENTO_REQUERIDO, VALIDACION" }
+        mensaje: { type: string }
+
+    Usuario:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        correo: { type: string, format: email }
+        rol: { type: string, enum: [estudiante, investigador] }
+        consentimientoAceptado: { type: boolean }
+        fechaConsentimiento: { type: string, format: date-time, nullable: true }
+        versionConsentimiento: { type: string, nullable: true }
+        fechaRegistro: { type: string, format: date-time }
+
+    Categoria:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        esPredefinida: { type: boolean }
+
+    TransaccionInput:
+      type: object
+      required: [monto, tipo, categoriaId, fecha]
+      properties:
+        monto: { type: number, format: double, exclusiveMinimum: 0, description: "RF-10" }
+        tipo: { type: string, enum: [ingreso, egreso] }
+        categoriaId: { type: string, format: uuid }
+        metaAhorroId: { type: string, format: uuid, nullable: true }
+        fecha: { type: string, format: date, description: "No admite fecha futura (RF-11)" }
+
+    Transaccion:
+      allOf:
+        - $ref: "#/components/schemas/TransaccionInput"
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+            origen: { type: string, enum: [manual, ocr, gmail] }
+            esGastoHormiga: { type: boolean, description: "Calculado por el backend, RF-38" }
+            umbralHormigaAplicado: { type: number, format: double, nullable: true, description: "Snapshot del umbral vigente al momento de crear el egreso (D-08); null para ingresos" }
+            imagenUrl: { type: string, nullable: true }
+            fechaCreacion: { type: string, format: date-time }
+
+    MetaAhorroConProgreso:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        montoObjetivo: { type: number, format: double }
+        fechaLimite: { type: string, format: date }
+        estado: { type: string, enum: [activa, cumplida, inactiva] }
+        montoAhorrado: { type: number, format: double, description: "Calculado en tiempo real, RF-33" }
+        porcentajeCumplimiento: { type: number, format: double, minimum: 0, maximum: 100, description: "Limitado a 100 aunque el monto ahorrado lo supere (AHO-02/FA1)" }
+        fechaCreacion: { type: string, format: date-time }
+
+    SugerenciaTransaccion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        monto: { type: number, format: double }
+        tipo: { type: string, enum: [ingreso, egreso] }
+        fecha: { type: string, format: date }
+        origen: { type: string, enum: [ocr, gmail] }
+        estado: { type: string, enum: [pendiente, confirmada, descartada] }
+        fechaExpiracion: { type: string, format: date-time, description: "24 h desde la creación (RF-22)" }
+        fechaCreacion: { type: string, format: date-time }
+
+    ConexionGmail:
+      type: object
+      properties:
+        conectado: { type: boolean }
+        estado: { type: string, enum: [activo, revocado], nullable: true }
+        fechaConexion: { type: string, format: date-time, nullable: true }
+
+    DashboardResumen:
+      type: object
+      properties:
+        periodo: { type: string, enum: [semana, mes] }
+        fechaInicio: { type: string, format: date }
+        fechaFin: { type: string, format: date }
+        ingresosTotal: { type: number, format: double }
+        egresosTotal: { type: number, format: double }
+        ahorroTotal: { type: number, format: double }
+        gastosPorCategoria:
+          type: array
+          items:
+            type: object
+            properties:
+              categoriaId: { type: string, format: uuid }
+              nombre: { type: string }
+              montoTotal: { type: number, format: double }
+        gastosHormiga:
+          type: object
+          properties:
+            montoTotal: { type: number, format: double }
+            porcentajeSobreEgresos: { type: number, format: double, minimum: 0, maximum: 100 }
