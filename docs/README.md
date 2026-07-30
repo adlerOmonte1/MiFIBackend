@@ -65,6 +65,7 @@ Controllers (Presentación)
 | 8 | [EspecificacionesCasosUsoCriticos.md](EspecificacionesCasosUsoCriticos.md) | Flujos básico/alterno/excepción de los UC críticos | Para el detalle fino de un caso de uso |
 | 9 | [RequerimientosNoFuncionales.md](RequerimientosNoFuncionales.md) | Catálogo RNF (ISO 25010): rendimiento, fiabilidad, seguridad, usabilidad, mantenibilidad, portabilidad | Para fijar métricas medibles no cubiertas por los RF |
 | 10 | [openapi.yaml](openapi.yaml) | Contrato OpenAPI 3.0 de todos los endpoints del backend | Para implementar o consumir un endpoint concreto (fuente de verdad del contrato API) |
+| 11 | [Wireframes.md](Wireframes.md) | Transcripción de las 17 pantallas del mockup de alta fidelidad, por flujo | Para diseñar una pantalla o entender qué componentes UI debe soportar un endpoint |
 | — | [../PlanTrabajo.md](../PlanTrabajo.md) | Plan de trabajo secuencial por fases (ISO 12207) | Para ubicar en qué fase estamos |
 
 ---
@@ -105,6 +106,8 @@ Decisiones tomadas y por qué. Son la referencia autoritativa cuando el código 
 | **D-10** | `registros_error` **sin FK a usuarios**. | Regla de privacidad de CAL-01: un error nunca debe rastrearse hasta un estudiante concreto. | ERD (`registros_error`) |
 | **D-11** *(temporal)* | **Gmail API en modo Testing** durante la construcción. | El refresh token expira cada 7 días. Aceptado en construcción; el flujo FE1 de UC-GML-02 maneja la reconexión. **Plan:** verificar/adquirir el servicio antes del pretest/postest. | Componentes (§ decisiones temporales) |
 | **D-12** *(temporal)* | **Cron in-process (`node-cron`)** en Render para la búsqueda cada 6 h. | Simplicidad en construcción. Limitación: puede no dispararse si el servicio se suspende. **Plan:** migrar a disparador externo robusto (Render Cron Job / GitHub Actions / `pg_cron`) en la operación real. | Componentes (§ decisiones temporales) |
+| **D-13** | **Categorías libres**: además de las predefinidas (globales), el estudiante puede crear, renombrar y eliminar sus propias categorías (`categorias.usuario_id` nullable). | Detectado al revisar el mockup de alta fidelidad ([Wireframes.md](Wireframes.md)): la clasificación predefinida no cubre todos los hábitos de gasto de un estudiante real. | RF-36, RF-53, RF-54, ERD (`categorias`), HU CAT-01 |
+| **D-14** | **Fecha límite de meta de ahorro opcional** (`metas_ahorro.fecha_limite` nullable); si se define, debe ser futura. | Detectado al revisar el mockup ([Wireframes.md](Wireframes.md)): una meta tipo "fondo de emergencia" no tiene un plazo natural. El cálculo de progreso (UC-AHO-02) no depende de esta columna. | RF-30, RF-31, ERD (`metas_ahorro`), HU AHO-01 |
 
 ---
 
@@ -115,8 +118,8 @@ Entidades persistidas (PostgreSQL, 3FN). Detalle completo en [DiagramaEntidadRel
 - **usuarios** — cuenta, rol, estado de bloqueo, aceptación de consentimiento.
 - **sesiones** — sesiones JWT activas (`jti`, expiración, revocada).
 - **transacciones** — ingresos/egresos; `origen` (manual/ocr/gmail), `es_gasto_hormiga`, `umbral_hormiga_aplicado`, `imagen_url`.
-- **categorias** — clasificación predefinida de gastos.
-- **metas_ahorro** — objetivo, fecha límite, estado; progreso calculado en tiempo real (nunca precalculado).
+- **categorias** — predefinidas (globales) o propias del estudiante (D-13); clasificación de gastos.
+- **metas_ahorro** — objetivo, fecha límite opcional (D-14), estado; progreso calculado en tiempo real (nunca precalculado).
 - **sugerencias_transaccion** — transacciones automáticas pendientes de confirmación (OCR/Gmail); expiran a las 24 h.
 - **conexiones_gmail** — vínculo OAuth (tokens cifrados AES-256-GCM), 1 por usuario.
 - **encuestas_sus** — respuestas y puntaje SUS, 1 por usuario.
@@ -143,10 +146,8 @@ El software produce los datos; la matriz de operacionalización completa vive en
 
 ## 9. Estado del proyecto y pendientes
 
-- **Fase actual:** Fase 1 — Diseño (ISO/IEC 12207). El paquete de diseño está casi completo.
-- **Generados:** catálogo de Requisitos No Funcionales ([RequerimientosNoFuncionales.md](RequerimientosNoFuncionales.md)) y contrato OpenAPI de todos los endpoints ([openapi.yaml](openapi.yaml)).
-- **Pendiente de la Fase 1 para poder cerrarla** (definido en [PlanTrabajo.md](../PlanTrabajo.md), aún no generado):
-  1. **Wireframes** de las 6–8 pantallas principales (base del SUS).
+- **Fase actual:** Fase 1 — Diseño (ISO/IEC 12207), **paquete completo**: SRS (HU + RF + RNF), modelo de datos (ERD), arquitectura (Componentes + Clases), interfaz ([Wireframes.md](Wireframes.md), 17 pantallas), contrato de API ([openapi.yaml](openapi.yaml)) y especificación de casos de uso críticos. Siguiente paso: Fase 2 — Configuración del entorno (Sprint 0).
+- **Nota de trazabilidad:** la revisión del mockup de alta fidelidad generó dos decisiones de diseño nuevas — categorías libres (D-13) y meta de ahorro con fecha límite opcional (D-14) — ya propagadas a HU, RF, ERD, Diagrama de Clases, `schema.prisma` y `openapi.yaml`. Antes de generar la migración de Prisma (Fase 2.2), correr `prisma migrate dev` contra una base de datos real para que Prisma derive el SQL a partir del schema actualizado, en vez de escribirlo a mano.
 
 ---
 

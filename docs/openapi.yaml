@@ -27,7 +27,7 @@ tags:
   - name: Transacciones
     description: RF-09 a RF-15 (TRX-01, TRX-02)
   - name: Categorías
-    description: RF-36, RF-37 (CAT-01)
+    description: RF-36, RF-37, RF-53, RF-54 (CAT-01)
   - name: Ahorro
     description: RF-30 a RF-35 (AHO-01, AHO-02)
   - name: OCR
@@ -250,33 +250,108 @@ paths:
   /categorias:
     get:
       tags: [Categorías]
-      summary: Listar categorías predefinidas (RF-36, CAT-01)
+      summary: Listar categorías disponibles — predefinidas + propias del usuario (RF-36, RF-37, CAT-01)
       responses:
         "200":
-          description: OK
+          description: OK — incluye las predefinidas (globales) y las creadas por el usuario autenticado.
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Categoria" }
         "401": { $ref: "#/components/responses/NoAutenticado" }
-
-  # ───────────────────────── AHORRO ─────────────────────────
-  /metas-ahorro:
     post:
-      tags: [Ahorro]
-      summary: Crear meta de ahorro (RF-30, RF-31, RF-32, UC-AHO-01)
+      tags: [Categorías]
+      summary: Crear categoría propia (RF-53, CAT-01)
+      description: La categoría creada es privada del usuario (`esPredefinida=false`, `usuarioId` = el del token); no la ven otros estudiantes.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [nombre, montoObjetivo, fechaLimite]
+              required: [nombre]
+              properties:
+                nombre: { type: string, maxLength: 50 }
+      responses:
+        "201":
+          description: Creada.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Categoria" }
+        "400": { $ref: "#/components/responses/ValidacionError" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "409":
+          description: Ya existe una categoría (predefinida o propia) con ese nombre para este usuario (RF-53).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /categorias/{id}:
+    parameters:
+      - $ref: "#/components/parameters/RecursoId"
+    put:
+      tags: [Categorías]
+      summary: Renombrar categoría propia (RF-54)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre]
+              properties:
+                nombre: { type: string, maxLength: 50 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Categoria" }
+        "400": { $ref: "#/components/responses/ValidacionError" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403":
+          description: La categoría es predefinida; no admite edición (RF-54).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+    delete:
+      tags: [Categorías]
+      summary: Eliminar categoría propia (RF-54)
+      description: Solo si no tiene transacciones asociadas (ver HU CAT-01, CA06).
+      responses:
+        "204": { description: Eliminada. }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403":
+          description: La categoría es predefinida; no admite eliminación (RF-54).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409":
+          description: La categoría tiene transacciones asociadas; reasígnalas antes de eliminarla (CA06).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  # ───────────────────────── AHORRO ─────────────────────────
+  /metas-ahorro:
+    post:
+      tags: [Ahorro]
+      summary: Crear meta de ahorro (RF-30, RF-31, RF-32, UC-AHO-01)
+      description: La fecha límite es opcional, a elección del estudiante (D-14); si se omite, la meta queda como "sin fecha límite".
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, montoObjetivo]
               properties:
                 nombre: { type: string, maxLength: 100 }
                 montoObjetivo: { type: number, format: double, exclusiveMinimum: 0, description: "RF-31" }
-                fechaLimite: { type: string, format: date, description: "Debe ser futura (RF-31)" }
+                fechaLimite: { type: string, format: date, nullable: true, description: "Opcional (D-14); si se define, debe ser futura (RF-31)" }
       responses:
         "201": { $ref: "#/components/responses/MetaAhorroCreada" }
         "400": { $ref: "#/components/responses/ValidacionError" }
@@ -697,7 +772,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         nombre: { type: string }
-        esPredefinida: { type: boolean }
+        esPredefinida: { type: boolean, description: "true = global, no editable/eliminable por el usuario (D-13)" }
 
     TransaccionInput:
       type: object
@@ -727,7 +802,7 @@ components:
         id: { type: string, format: uuid }
         nombre: { type: string }
         montoObjetivo: { type: number, format: double }
-        fechaLimite: { type: string, format: date }
+        fechaLimite: { type: string, format: date, nullable: true, description: "null = sin fecha límite (D-14)" }
         estado: { type: string, enum: [activa, cumplida, inactiva] }
         montoAhorrado: { type: number, format: double, description: "Calculado en tiempo real, RF-33" }
         porcentajeCumplimiento: { type: number, format: double, minimum: 0, maximum: 100, description: "Limitado a 100 aunque el monto ahorrado lo supere (AHO-02/FA1)" }

@@ -47,6 +47,7 @@ classDiagram
         +String id
         +String nombre
         +Boolean esPredefinida
+        +esPropiaDe(usuarioId) Boolean
     }
 
     class MetaAhorro {
@@ -55,6 +56,7 @@ classDiagram
         +Decimal montoObjetivo
         +Date fechaLimite
         +String estado
+        +tieneFechaLimite() Boolean
         +calcularProgreso() Decimal
         +estaCumplida() Boolean
     }
@@ -133,6 +135,7 @@ classDiagram
     Usuario "1" --> "0..1" EncuestaSUS : responde
     Usuario "1" --> "0..*" PresupuestoCategoria : configura
     Usuario "1" --> "0..*" Sesion : mantiene
+    Usuario "1" --> "0..*" Categoria : crea opcionalmente
 
     Transaccion "0..*" --> "1" Categoria : pertenece a
     Transaccion "0..*" --> "0..1" MetaAhorro : vinculada a
@@ -158,8 +161,8 @@ classDiagram
 | **Usuario** | Estudiante o investigador; punto de partida de casi todas las relaciones. Incluye el estado de bloqueo por intentos fallidos y la aceptación del consentimiento informado | AUT-01, AUT-02, CON-01 |
 | **Sesion** | Sesión activa asociada a un JWT propio (`jti`); permite revocar el token en logout sin esperar su expiración | AUT-02 |
 | **Transaccion** | Registro financiero confirmado (ingreso o egreso). Guarda el umbral de gasto hormiga aplicado al evaluarla, para reproducibilidad | TRX-01, TRX-02, CAT-02 |
-| **Categoria** | Clasificación de un gasto (comida, transporte, etc.) | CAT-01 |
-| **MetaAhorro** | Objetivo de ahorro con monto y fecha límite | AHO-01, AHO-02 |
+| **Categoria** | Clasificación de un gasto; predefinida (global, `usuarioId = null`) o propia del estudiante (D-13) | CAT-01 |
+| **MetaAhorro** | Objetivo de ahorro con monto y, opcionalmente, fecha límite (D-14) | AHO-01, AHO-02 |
 | **SugerenciaTransaccion** | Transacción aún no confirmada, generada por OCR o Gmail | CNF-01 |
 | **ConexionGmail** | Vínculo OAuth entre el usuario y su cuenta de Gmail | GML-01 |
 | **IBankEmailParser** + implementaciones | Extraen datos de un correo bancario según el formato de cada banco | GML-02 |

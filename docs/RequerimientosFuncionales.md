@@ -70,8 +70,8 @@
 
 | RF | Descripción | HU de origen |
 |---|---|---|
-| RF-30 | El sistema debe permitir crear una meta de ahorro con monto objetivo y fecha límite. | AHO-01 |
-| RF-31 | El sistema debe validar que el monto objetivo sea mayor a 0 y la fecha límite sea futura. | AHO-01 |
+| RF-30 | El sistema debe permitir crear una meta de ahorro con monto objetivo y, opcionalmente, fecha límite (a elección del estudiante). | AHO-01 |
+| RF-31 | El sistema debe validar que el monto objetivo sea mayor a 0 y que, si se define fecha límite, esta sea futura. | AHO-01 |
 | RF-32 | El sistema debe permitir múltiples metas de ahorro activas por estudiante. | AHO-01 |
 | RF-33 | El sistema debe calcular el porcentaje de cumplimiento de cada meta de ahorro activa. | AHO-02 |
 | RF-34 | El sistema debe mostrar visualmente el progreso de ahorro mediante una barra o gráfico. | AHO-02 |
@@ -83,7 +83,7 @@
 
 | RF | Descripción | HU de origen |
 |---|---|---|
-| RF-36 | El sistema debe permitir asignar una categoría predefinida a cada transacción de egreso. | CAT-01 |
+| RF-36 | El sistema debe permitir asignar una categoría (predefinida o creada por el propio estudiante) a cada transacción de egreso. | CAT-01 |
 | RF-37 | El sistema debe permitir consultar el monto total de gastos agrupado por categoría. | CAT-01 |
 | RF-38 | El sistema debe marcar automáticamente como "gasto hormiga" toda transacción de egreso igual o menor a un umbral configurable, y **registrar en la transacción el valor de umbral aplicado** (`umbral_hormiga_aplicado`) para reproducibilidad. El umbral permanece congelado durante la ventana de medición. | CAT-02 |
 | RF-39 | El sistema debe calcular el porcentaje de gastos hormiga sobre el total de egresos del periodo. | CAT-02 |
@@ -137,5 +137,14 @@
 | RF-50 | El sistema debe verificar, antes de leer, modificar o eliminar cualquier recurso, que el usuario autenticado sea su propietario; si no lo es, debe responder como "recurso no encontrado" (evita fuga de existencia — prevención de IDOR). | TRX-02, AHO-02, CNF-01, GML-01 |
 | RF-51 | El sistema debe validar el JWT y el estado de la sesión (no revocada, no expirada) en cada petición a un endpoint protegido, antes de ejecutar el caso de uso. | AUT-02 |
 | RF-52 | El sistema debe transmitir toda comunicación entre la app móvil y el backend, y entre el backend y los servicios externos, exclusivamente sobre HTTPS/TLS. | AUT-02, OCR-01, GML-01 |
+
+---
+
+## ADENDA — Categorías propias (a partir de la revisión de wireframes, ver [Wireframes.md](Wireframes.md) y ADR D-13)
+
+| RF | Descripción | HU de origen |
+|---|---|---|
+| RF-53 | El sistema debe permitir al estudiante crear una categoría propia con un nombre no repetido dentro de sus categorías (predefinidas + propias); esta categoría es visible únicamente para él. | CAT-01 |
+| RF-54 | El sistema debe permitir al estudiante renombrar o eliminar una categoría propia, siempre que no tenga transacciones asociadas; las categorías predefinidas no admiten estas operaciones. | CAT-01 |
 
 ---
