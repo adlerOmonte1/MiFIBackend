@@ -4,7 +4,13 @@ coverage
 node_modules
 package-lock.json
 
-# Skills vendorizadas (no son código del proyecto)
+# Skills (vendorizadas y propias) — Markdown de referencia, no código
 .agents
 .claude
 .windsurf
+
+# Documentación de diseño y prosa — formato editorial propio (tablas ADR,
+# diagramas mermaid), no gestionado por Prettier. Prettier queda acotado
+# a código (src/, config de la app, workflows).
+docs
+*.md

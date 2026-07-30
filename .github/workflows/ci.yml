@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancela corridas anteriores del mismo PR/rama cuando llega un push nuevo,
+# para no gastar minutos de CI validando código ya obsoleto.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Valor ficticio: prisma validate/generate no se conectan a una base real,
+  # solo necesitan que la variable exista para resolver el datasource.
+  DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci_placeholder"
+
+jobs:
+  verificacion:
+    name: Lint, typecheck, tests y build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Generar cliente de Prisma
+        run: npx prisma generate
+
+      - name: Validar schema de Prisma
+        run: npx prisma validate
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Formato (Prettier)
+        run: npm run format:check
+
+      - name: Chequeo de tipos (TypeScript)
+        run: npm run typecheck
+
+      - name: Pruebas con cobertura (Jest — umbral RNF-18)
+        run: npm run test:coverage
+
+      - name: Subir reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+      - name: Build (tsc)
+        run: npm run build
