@@ -2,18 +2,19 @@
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
-    // "rootDir": "./src",
-    // "outDir": "./dist",
+    "rootDir": "./src",
+    "outDir": "./dist",
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
     "target": "esnext",
-    "types": [],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
+    "lib": ["esnext"],
+    // Solo los paquetes de tipos globales/ambientales van aquí (inyectan
+    // declaraciones sin import explícito). Paquetes como express, cors,
+    // jsonwebtoken o bcryptjs no lo necesitan: TS resuelve su @types
+    // automáticamente al hacer `import` de ellos.
+    "types": ["node", "jest"],
 
     // Other Outputs
     "sourceMap": true,
@@ -34,11 +35,10 @@
 
     // Recommended Options
     "strict": true,
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true,
-  }
+    "skipLibCheck": true
+  },
+  "include": ["src"]
 }

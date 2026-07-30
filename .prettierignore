@@ -1,0 +1,10 @@
+dist
+generated
+coverage
+node_modules
+package-lock.json
+
+# Skills vendorizadas (no son código del proyecto)
+.agents
+.claude
+.windsurf

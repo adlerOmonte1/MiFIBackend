@@ -296,20 +296,23 @@ El sistema debe identificar correos provenientes de remitentes bancarios conocid
 **Como** estudiante, **quiero** definir una meta de ahorro con un monto objetivo y una fecha límite, **para** planificar mi ahorro de manera concreta.
 
 ## Descripción
-Cada estudiante puede definir una o más metas de ahorro activas, cada una asociada a un monto objetivo positivo y una fecha límite futura, que servirán como referencia para calcular el porcentaje de cumplimiento del indicador correspondiente.
+Cada estudiante puede definir una o más metas de ahorro activas, cada una asociada a un monto objetivo positivo y, **a su elección, una fecha límite** (por ejemplo, un fondo de emergencia sin plazo definido no la necesita). Cuando se define, la fecha límite debe ser futura. La meta servirá como referencia para calcular el porcentaje de cumplimiento del indicador correspondiente.
 
 ## Detalles
 - Un estudiante puede tener varias metas de ahorro activas de forma simultánea.
 - El nombre de la meta es obligatorio, para poder diferenciarla en el listado.
+- La fecha límite es **opcional**; una meta sin fecha límite se muestra como "Sin fecha límite" y participa igual en el cálculo de progreso (AHO-02).
 - Una meta no puede eliminarse si ya tiene transacciones de ahorro asociadas (se marca como inactiva en su lugar).
 
 ## Criterios de Aceptación
 
-> **CA01.** Dado que un estudiante completa el formulario de nueva meta con un monto mayor a 0 y una fecha límite posterior a la fecha actual, cuando confirma la creación, entonces el sistema almacena la meta y la muestra en el dashboard.
+> **CA01.** Dado que un estudiante completa el formulario de nueva meta con un monto mayor a 0, con o sin fecha límite, cuando confirma la creación, entonces el sistema almacena la meta y la muestra en el dashboard.
 
 > **CA02.** Dado que un estudiante ingresa un monto objetivo igual o menor a 0, cuando intenta guardar la meta, entonces el sistema rechaza el registro y muestra un mensaje de validación.
 
-> **CA03.** Dado que un estudiante selecciona una fecha límite anterior o igual a la fecha actual, cuando intenta guardar la meta, entonces el sistema impide el registro y muestra un mensaje indicando que la fecha debe ser futura.
+> **CA03.** Dado que un estudiante define una fecha límite anterior o igual a la fecha actual, cuando intenta guardar la meta, entonces el sistema impide el registro y muestra un mensaje indicando que la fecha debe ser futura.
+
+> **CA04.** Dado que un estudiante no define ninguna fecha límite, cuando confirma la creación de la meta, entonces el sistema la almacena sin fecha límite y la muestra como tal en el listado.
 
 ---
 
@@ -358,20 +361,28 @@ El sistema debe calcular automáticamente el porcentaje de cumplimiento de cada 
 **Como** estudiante, **quiero** asignar una categoría a cada gasto registrado, **para** entender en qué se concentra mi gasto mensual.
 
 ## Descripción
-El sistema debe ofrecer un conjunto predefinido de categorías (comida, transporte, ocio, servicios, otros) que el estudiante asigna al registrar o editar una transacción de tipo egreso, permitiendo posteriormente consultar el total gastado por cada categoría.
+El sistema debe ofrecer un conjunto predefinido de categorías (comida, transporte, ocio, servicios, otros) y además permitir que el estudiante **cree sus propias categorías**, para clasificar egresos que no encajan bien en el catálogo predefinido. Ambos tipos de categoría se asignan igual al registrar o editar una transacción, y ambos alimentan por igual el resumen de gasto por categoría.
 
 ## Detalles
-- Las categorías predefinidas no pueden eliminarse desde la app del estudiante.
-- Una transacción solo puede pertenecer a una categoría a la vez.
+- Las categorías predefinidas no pueden eliminarse ni editarse desde la app del estudiante; son compartidas por todos los usuarios.
+- Una categoría creada por el estudiante le pertenece solo a él: no la ven ni la usan otros estudiantes, y puede editarla (renombrarla) o eliminarla si no tiene transacciones asociadas.
+- El nombre de una categoría propia no puede repetirse dentro de las categorías del mismo estudiante (predefinidas + propias).
+- Una transacción solo puede pertenecer a una categoría a la vez, sea predefinida o propia.
 - Si un egreso no se categoriza explícitamente, se asigna a la categoría "Otros" por defecto.
 
 ## Criterios de Aceptación
 
-> **CA01.** Dado que un estudiante registra un egreso, cuando selecciona una categoría de la lista predefinida, entonces el sistema asocia la transacción a dicha categoría de forma permanente.
+> **CA01.** Dado que un estudiante registra un egreso, cuando selecciona una categoría de la lista (predefinida o propia), entonces el sistema asocia la transacción a dicha categoría de forma permanente.
 
-> **CA02.** Dado que existen transacciones categorizadas en un periodo determinado, cuando el estudiante consulta el resumen por categoría, entonces el sistema muestra el monto total agrupado por cada categoría.
+> **CA02.** Dado que existen transacciones categorizadas en un periodo determinado, cuando el estudiante consulta el resumen por categoría, entonces el sistema muestra el monto total agrupado por cada categoría, predefinida o propia.
 
 > **CA03.** Dado que un estudiante edita una transacción existente, cuando cambia su categoría, entonces el sistema actualiza el resumen por categoría reflejando el nuevo agrupamiento.
+
+> **CA04.** Dado que un estudiante quiere clasificar un gasto que no encaja en las categorías predefinidas, cuando crea una categoría propia con un nombre no repetido, entonces el sistema la agrega a su lista de categorías disponibles, visible solo para él.
+
+> **CA05.** Dado que un estudiante intenta crear una categoría propia con un nombre que ya usa (predefinido o propio), cuando confirma la creación, entonces el sistema rechaza la operación y muestra un mensaje indicando que el nombre ya está en uso.
+
+> **CA06.** Dado que un estudiante intenta eliminar una categoría propia que ya tiene transacciones asociadas, cuando confirma la eliminación, entonces el sistema la rechaza y sugiere reasignar las transacciones a otra categoría primero.
 
 ---
 

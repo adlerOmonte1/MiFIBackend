@@ -30,6 +30,7 @@ model Usuario {
   conexionGmail        ConexionGmail?
   encuestaSus          EncuestaSus?
   presupuestosCategoria PresupuestoCategoria[]
+  categoriasPropias    Categoria[]
 
   @@map("usuarios")
 }
@@ -49,15 +50,18 @@ model Sesion {
   @@map("sesiones")
 }
 
-// CATEGORIAS
+// CATEGORIAS  (predefinidas: usuarioId null · propias: D-13, RF-53/54)
 model Categoria {
   id             String  @id @default(uuid())
+  usuarioId      String? @map("usuario_id") // NULL = predefinida (global); con valor = propia del estudiante
   nombre         String  @db.VarChar(50)
   esPredefinida  Boolean @default(true) @map("es_predefinida")
 
+  usuario               Usuario?                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   transacciones         Transaccion[]
   presupuestosCategoria PresupuestoCategoria[]
 
+  @@unique([usuarioId, nombre])
   @@map("categorias")
 }
 
@@ -90,9 +94,9 @@ model MetaAhorro {
   id             String   @id @default(uuid())
   usuarioId      String   @map("usuario_id")
   nombre         String   @db.VarChar(100)
-  montoObjetivo  Decimal  @map("monto_objetivo") @db.Decimal(10, 2) // CHECK (> 0)
-  fechaLimite    DateTime @map("fecha_limite") @db.Date // CHECK (> CURRENT_DATE al crear)
-  estado         String   @default("activa") @db.VarChar(20) // CHECK IN ('activa','cumplida','inactiva')
+  montoObjetivo  Decimal   @map("monto_objetivo") @db.Decimal(10, 2) // CHECK (> 0)
+  fechaLimite    DateTime? @map("fecha_limite") @db.Date // opcional (D-14); si tiene valor, CHECK (> CURRENT_DATE al crear)
+  estado         String    @default("activa") @db.VarChar(20) // CHECK IN ('activa','cumplida','inactiva')
   fechaCreacion  DateTime @default(now()) @map("fecha_creacion")
 
   usuario       Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)

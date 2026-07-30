@@ -13,6 +13,7 @@ erDiagram
     USUARIOS ||--o| ENCUESTAS_SUS : responde
     USUARIOS ||--o{ PRESUPUESTOS_CATEGORIA : configura
     USUARIOS ||--o{ SESIONES : mantiene
+    USUARIOS ||--o{ CATEGORIAS : crea_opcionalmente
     CATEGORIAS ||--o{ TRANSACCIONES : clasifica
     CATEGORIAS ||--o{ PRESUPUESTOS_CATEGORIA : aplica_a
     METAS_AHORRO ||--o{ TRANSACCIONES : vincula
@@ -54,6 +55,7 @@ erDiagram
     }
     CATEGORIAS {
         uuid id PK
+        uuid usuario_id FK "NULL si es predefinida"
         varchar nombre
         boolean es_predefinida
     }
@@ -62,7 +64,7 @@ erDiagram
         uuid usuario_id FK
         varchar nombre
         decimal monto_objetivo
-        date fecha_limite
+        date fecha_limite "NULLABLE — opcional (D-14)"
         varchar estado
         timestamp fecha_creacion
     }
@@ -159,8 +161,11 @@ erDiagram
 | Columna | Tipo | Restricción |
 |:--|:--|:--|
 | id | UUID | PK |
+| usuario_id | UUID | FK → usuarios.id, **NULLABLE** — NULL = categoría predefinida (global, compartida); con valor = categoría propia del estudiante (D-13, RF-53) |
 | nombre | VARCHAR(50) | NOT NULL |
 | es_predefinida | BOOLEAN | NOT NULL, DEFAULT true |
+
+**Restricción recomendada:** único `(usuario_id, nombre)` para evitar que un estudiante tenga dos categorías propias con el mismo nombre (RF-53); las predefinidas (`usuario_id IS NULL`) se validan por nombre único a nivel de aplicación, ya que son compartidas por todos.
 
 ### METAS_AHORRO
 | Columna | Tipo | Restricción |
@@ -169,7 +174,7 @@ erDiagram
 | usuario_id | UUID | FK → usuarios.id, NOT NULL |
 | nombre | VARCHAR(100) | NOT NULL |
 | monto_objetivo | DECIMAL(10,2) | NOT NULL, CHECK (monto_objetivo > 0) |
-| fecha_limite | DATE | NOT NULL, CHECK (fecha_limite > CURRENT_DATE al crear) |
+| fecha_limite | DATE | **NULLABLE** — opcional, a elección del estudiante (D-14); si tiene valor, CHECK (fecha_limite > CURRENT_DATE al crear) |
 | estado | VARCHAR(20) | NOT NULL, DEFAULT 'activa', CHECK IN ('activa','cumplida','inactiva') |
 | fecha_creacion | TIMESTAMP | NOT NULL, DEFAULT now() |
 
@@ -245,6 +250,7 @@ erDiagram
 | `usuarios(correo)` | Ya cubierto por el UNIQUE constraint, pero conviene confirmarlo como índice explícito para el login |
 | `sesiones(jti)` | Ya cubierto por el UNIQUE, pero es el índice que se golpea en **cada petición protegida** al validar la sesión — debe existir sí o sí |
 | `sesiones(usuario_id, revocada)` | Acelera la revocación de todas las sesiones de un usuario y la limpieza de sesiones expiradas |
+| `categorias(usuario_id, nombre)` UNIQUE | Soporta RF-53 (nombre no repetido dentro de las categorías propias del estudiante) y acelera el listado de "predefinidas + mías" por usuario |
 
 ---
 
@@ -253,5 +259,7 @@ erDiagram
 - **`transacciones.meta_ahorro_id` es NULLABLE**: no toda transacción está vinculada a una meta de ahorro — es opcional por diseño, coherente con el `0..1` del diagrama de clases.
 - **`conexiones_gmail.usuario_id` y `encuestas_sus.usuario_id` son UNIQUE**: modelan la relación uno-a-uno (o uno-a-cero-o-uno) — un estudiante tiene como máximo una conexión de Gmail y responde la encuesta SUS una sola vez, reforzando a nivel de base de datos la regla de negocio ya definida en las HU (GML-01 y USA-01).
 - **`registros_error` no tiene FK a usuarios**: es intencional, no un olvido — está explicado arriba.
+- **`categorias.usuario_id` es NULLABLE**: modela dos tipos de categoría en una sola tabla — predefinidas (`usuario_id = NULL`, `es_predefinida = true`, globales) y propias del estudiante (`usuario_id` con valor, `es_predefinida = false`, privadas). Evita duplicar el modelo de "categoría" solo para diferenciar el origen (D-13).
+- **`metas_ahorro.fecha_limite` es NULLABLE**: una meta sin fecha límite (ej. fondo de emergencia) es válida por diseño; el cálculo de progreso (UC-AHO-02) no depende de esta columna (D-14).
 
 ---
