@@ -1,10 +1,10 @@
 name: CI
 
 on:
+  # Sin filtro de branches: corre en cualquier rama (feature/, docs/, staging, main...).
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
 
 # Cancela corridas anteriores del mismo PR/rama cuando llega un push nuevo,
 # para no gastar minutos de CI validando código ya obsoleto.
@@ -27,12 +27,47 @@ jobs:
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
+        with:
+          # Historial completo: lo necesita el paso de resumen para
+          # calcular qué archivos cambiaron respecto al commit anterior.
+          fetch-depth: 0
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: npm
+
+      - name: Resumen — qué se está corriendo
+        run: |
+          {
+            echo "## 🔎 Resumen de la corrida"
+            echo ""
+            echo "| Campo | Valor |"
+            echo "|---|---|"
+            echo "| Evento | \`${{ github.event_name }}\` |"
+            echo "| Rama | \`${{ github.ref_name }}\` |"
+            echo "| Commit | [\`${GITHUB_SHA::7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |"
+            echo "| Autor | ${{ github.actor }} |"
+            echo ""
+            echo "### 📄 Archivos modificados"
+            echo ""
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              BASE="${{ github.event.pull_request.base.sha }}"
+            else
+              BASE="${{ github.event.before }}"
+            fi
+            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+              echo "_Primer push de la rama — archivos del commit \`${GITHUB_SHA::7}\`:_"
+              echo ""
+              git show --pretty="" --name-status "$GITHUB_SHA" | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
+            else
+              git diff --name-status "$BASE" "$GITHUB_SHA" | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
+            fi
+            echo ""
+            echo "### ✅ Verificaciones"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Instalar dependencias
         run: npm ci
@@ -41,19 +76,34 @@ jobs:
         run: npx prisma generate
 
       - name: Validar schema de Prisma
-        run: npx prisma validate
+        run: |
+          npx prisma validate \
+            && echo "- ✅ Schema de Prisma válido" >> "$GITHUB_STEP_SUMMARY" \
+            || { echo "- ❌ Schema de Prisma inválido" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
 
       - name: Lint (ESLint)
-        run: npm run lint
+        run: |
+          npm run lint \
+            && echo "- ✅ Lint (ESLint): sin errores" >> "$GITHUB_STEP_SUMMARY" \
+            || { echo "- ❌ Lint (ESLint): con errores" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
 
       - name: Formato (Prettier)
-        run: npm run format:check
+        run: |
+          npm run format:check \
+            && echo "- ✅ Formato (Prettier): consistente" >> "$GITHUB_STEP_SUMMARY" \
+            || { echo "- ❌ Formato (Prettier): archivos sin formatear" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
 
       - name: Chequeo de tipos (TypeScript)
-        run: npm run typecheck
+        run: |
+          npm run typecheck \
+            && echo "- ✅ Tipos (TypeScript): sin errores" >> "$GITHUB_STEP_SUMMARY" \
+            || { echo "- ❌ Tipos (TypeScript): con errores" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
 
       - name: Pruebas con cobertura (Jest — umbral RNF-18)
-        run: npm run test:coverage
+        run: |
+          npm run test:coverage \
+            && echo "- ✅ Pruebas: todas pasaron, cobertura de dominio/aplicación ≥70% (RNF-18)" >> "$GITHUB_STEP_SUMMARY" \
+            || { echo "- ❌ Pruebas: fallaron o no llegaron al umbral de cobertura" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
 
       - name: Subir reporte de cobertura
         if: always()
@@ -64,4 +114,7 @@ jobs:
           retention-days: 14
 
       - name: Build (tsc)
-        run: npm run build
+        run: |
+          npm run build \
+            && echo "- ✅ Build (tsc): compila sin errores" >> "$GITHUB_STEP_SUMMARY" \
+            || { echo "- ❌ Build (tsc): falló la compilación" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
