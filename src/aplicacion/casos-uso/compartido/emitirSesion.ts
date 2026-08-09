@@ -10,7 +10,6 @@ export interface DependenciasEmitirSesion {
   tokenService: ITokenService;
 }
 
-
 export async function emitirSesion(
   usuario: Usuario,
   { sesionRepository, tokenService }: DependenciasEmitirSesion,
