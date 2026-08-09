@@ -2,7 +2,7 @@
 name: mifi-checklist-pr
 description: Checklist previo a cerrar una tarea, hacer el commit final o abrir un Pull Request en MiFiBackend — cubre SOLID, trazabilidad RF/HU, seguridad anti-IDOR, y que lint/typecheck/tests/build pasen limpios. Úsalo antes de dar por terminada una funcionalidad, antes de un commit final, o cuando el usuario pida "revisa esto antes de hacer PR" o "está listo para commitear".
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   proyecto: MiFi
 ---
 
@@ -22,6 +22,23 @@ npm run build
 ```
 
 Si tocaste `prisma/schema.prisma`, además: `npx prisma validate`.
+
+**Ojo con esto:** correr el pipeline local no alcanza si vas a comitear solo
+*parte* de lo que cambiaste (commits chicos, un paso a la vez). El pipeline
+local corre contra **todo el directorio de trabajo**, no contra lo que
+quedó en `git add`. Un archivo puede compilar perfecto en tu máquina y
+romper igual en GitHub si te olvidaste de agregarlo al commit — ya pasó
+dos veces en este proyecto (`test-utils/fakes.ts` y
+`presentacion/tipos/express.d.ts`, un archivo `.d.ts` que ningún `grep
+import` detecta porque nadie lo importa explícitamente, TypeScript lo
+toma solo). Antes de correr el commit:
+
+- [ ] `grep "^import"` de cada archivo nuevo — ¿todo lo que importa ya
+      está comiteado o va en este mismo commit?
+- [ ] ¿Hay algún `.d.ts` nuevo (declaración de tipos ambiental, sin
+      import explícito en ningún lado) que el código nuevo necesite?
+- [ ] Después de `git add`, `git status` — confirmá que lo que quedó en
+      verde es *exactamente* lo que pensás que es, ni más ni menos.
 
 ## 2. SOLID (ver `mifi-arquitectura-solid` para el detalle de cada uno)
 
