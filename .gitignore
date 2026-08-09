@@ -14,7 +14,7 @@ credentials.json
 
 # --- Prisma ---
 # Cliente generado (se regenera con `npx prisma generate` / `migrate dev`)
-/generated/prisma
+/src/generated/prisma
 
 # --- Build / salida compilada ---
 dist/
