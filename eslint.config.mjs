@@ -3,7 +3,7 @@ import eslintConfigPrettier from "eslint-config-prettier";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "generated/**", "coverage/**", "node_modules/**"],
+    ignores: ["dist/**", "src/generated/**", "coverage/**", "node_modules/**"],
   },
   tseslint.configs.recommended,
   eslintConfigPrettier,

@@ -1,7 +1,11 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
+  // Dentro de src/ para que participe del build de TypeScript (rootDir).
+  output = "../src/generated/prisma"
+  // El proyecto es CommonJS (sin "type": "module" en package.json); sin
+  // esto el cliente generado usa import.meta.url y rompe con ts-jest/tsc.
+  moduleFormat = "cjs"
 }
 
 datasource db {
