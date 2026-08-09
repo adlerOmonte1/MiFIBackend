@@ -79,7 +79,8 @@ model Transaccion {
   tipo                   String    @db.VarChar(10) // CHECK IN ('ingreso','egreso')
   fecha                  DateTime  @db.Date // CHECK (fecha <= CURRENT_DATE)
   origen                 String    @default("manual") @db.VarChar(10) // CHECK IN ('manual','ocr','gmail')
-  esGastoHormiga         Boolean   @default(false) @map("es_gasto_hormiga")
+  esGastoHormiga         Boolean   @default(false) @map("es_gasto_hormiga") // automática por umbral (RF-38), no editable
+  esGastoHormigaUsuario  Boolean?  @map("es_gasto_hormiga_usuario") // criterio del estudiante (RF-55, D-15); null = no opinó
   umbralHormigaAplicado  Decimal?  @map("umbral_hormiga_aplicado") @db.Decimal(10, 2) // snapshot, D-08
   imagenUrl              String?   @map("imagen_url")
   fechaCreacion          DateTime  @default(now()) @map("fecha_creacion")

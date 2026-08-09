@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import type { AceptarConsentimientoUseCase } from "../../aplicacion/casos-uso/AceptarConsentimientoUseCase";
+import { aRespuestaUsuario } from "../mapeadores/usuarioResponse";
 
 const esquemaConsentimiento = z.object({
   versionTexto: z.string().min(1), // RF-48
@@ -17,11 +18,7 @@ export class ConsentimientoController {
       versionTexto,
     });
 
-    res.status(200).json({
-      id: usuario.id,
-      consentimientoAceptado: usuario.consentimientoAceptado,
-      fechaConsentimiento: usuario.fechaConsentimiento,
-      versionConsentimiento: usuario.versionConsentimiento,
-    });
+    // El contrato (docs/openapi.yaml) promete el esquema Usuario completo.
+    res.status(200).json(aRespuestaUsuario(usuario));
   };
 }

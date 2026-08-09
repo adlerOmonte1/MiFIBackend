@@ -85,8 +85,8 @@
 |---|---|---|
 | RF-36 | El sistema debe permitir asignar una categoría (predefinida o creada por el propio estudiante) a cada transacción de egreso. | CAT-01 |
 | RF-37 | El sistema debe permitir consultar el monto total de gastos agrupado por categoría. | CAT-01 |
-| RF-38 | El sistema debe marcar automáticamente como "gasto hormiga" toda transacción de egreso igual o menor a un umbral configurable, y **registrar en la transacción el valor de umbral aplicado** (`umbral_hormiga_aplicado`) para reproducibilidad. El umbral permanece congelado durante la ventana de medición. | CAT-02 |
-| RF-39 | El sistema debe calcular el porcentaje de gastos hormiga sobre el total de egresos del periodo. | CAT-02 |
+| RF-38 | El sistema debe marcar automáticamente como "gasto hormiga" toda transacción de egreso igual o menor a un umbral configurable, y **registrar en la transacción el valor de umbral aplicado** (`umbral_hormiga_aplicado`) para reproducibilidad. El umbral permanece congelado durante la ventana de medición. Esta marca automática **no es editable por el estudiante** (D-15). | CAT-02 |
+| RF-39 | El sistema debe calcular el porcentaje de gastos hormiga sobre el total de egresos del periodo, **usando la marca automática de RF-38** como base del indicador de investigación. | CAT-02 |
 
 ---
 
@@ -146,5 +146,18 @@
 |---|---|---|
 | RF-53 | El sistema debe permitir al estudiante crear una categoría propia con un nombre no repetido dentro de sus categorías (predefinidas + propias); esta categoría es visible únicamente para él. | CAT-01 |
 | RF-54 | El sistema debe permitir al estudiante renombrar o eliminar una categoría propia, siempre que no tenga transacciones asociadas; las categorías predefinidas no admiten estas operaciones. | CAT-01 |
+
+---
+
+## ADENDA — Criterio propio de gasto hormiga (ver [Wireframes.md](Wireframes.md) y ADR D-15)
+
+> **Motivo:** un gasto hormiga se define por ser pequeño, recurrente e **innecesario o impulsivo**, no solo por su monto. Un pasaje de S/ 2 es un costo necesario; un antojo de S/ 3 es el caso típico. El umbral automático (RF-38) no puede distinguir eso, pero el estudiante sí.
+
+| RF | Descripción | HU de origen |
+|---|---|---|
+| RF-55 | El sistema debe permitir al estudiante indicar, sobre una transacción de egreso propia, si **según su criterio** fue un gasto hormiga, de forma independiente a la marca automática de RF-38. El valor es opcional: una transacción sin opinión del estudiante es un estado válido. | CAT-02 |
+| RF-56 | El sistema debe conservar ambas marcas por separado (automática de RF-38 y del estudiante de RF-55) sin que una sobrescriba a la otra, para permitir el análisis comparativo entre ambas. | CAT-02 |
+
+---
 
 ---

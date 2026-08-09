@@ -397,16 +397,19 @@ El sistema debe ofrecer un conjunto predefinido de categorías (comida, transpor
 | **Estado** | Pendiente |
 
 ## Historia de Usuario
-**Como** estudiante, **quiero** que la aplicación identifique automáticamente mis gastos pequeños no planificados, **para** tomar conciencia de mis hábitos de consumo.
+**Como** estudiante, **quiero** que la aplicación identifique mis gastos pequeños no planificados —y poder aportar mi propio criterio sobre cuáles lo fueron de verdad—, **para** tomar conciencia de mis hábitos de consumo.
 
 ## Descripción
-El sistema debe marcar automáticamente como "gasto hormiga" toda transacción de egreso cuyo monto sea menor o igual a un umbral configurable, y calcular el porcentaje que estos gastos representan sobre el total de egresos del periodo consultado.
+El sistema debe marcar automáticamente como "gasto hormiga" toda transacción de egreso cuyo monto sea menor o igual a un umbral configurable, y calcular el porcentaje que estos gastos representan sobre el total de egresos del periodo consultado. Adicionalmente, el estudiante puede indicar su propio criterio sobre cada egreso, porque un gasto hormiga se define por ser innecesario o impulsivo y no solo por su monto — algo que un umbral no puede distinguir por sí solo.
 
 ## Detalles
 - El umbral por defecto es S/ 15. Es ajustable por el investigador **únicamente durante la fase de calibración previa al piloto**; una vez iniciada la medición (pretest O₁) el umbral queda **congelado** para todo el estudio, de modo que O₁ y O₂ sean comparables (validez interna del instrumento).
 - Cada transacción guarda el valor de umbral con el que fue evaluada (`umbral_hormiga_aplicado`), de modo que la marca sea reproducible y auditable aunque el umbral cambie entre estudios distintos.
 - La regla aplica únicamente a transacciones de tipo egreso; nunca a ingresos.
-- El marcado como "gasto hormiga" es automático; el estudiante no puede desmarcarlo manualmente (garantiza consistencia del indicador).
+- **Existen dos marcas independientes, y ninguna sobrescribe a la otra (D-15):**
+  - **Automática (RF-38):** la calcula el sistema por umbral. El estudiante **no puede** modificarla — es la que alimenta el indicador de la investigación, y su inmutabilidad es lo que garantiza que O₁ y O₂ sean comparables.
+  - **Del estudiante (RF-55):** opcional, refleja su propio criterio sobre si el gasto fue innecesario. Un pasaje de S/ 2 puede ser necesario aunque el umbral lo marque; un antojo de S/ 3 puede ser hormiga aunque el estudiante decida no marcarlo.
+- La diferencia entre ambas marcas es un dato de investigación en sí mismo: permite observar si cambió la **percepción** del estudiante sobre qué es un gasto innecesario a lo largo del estudio.
 
 ## Criterios de Aceptación
 
@@ -415,6 +418,12 @@ El sistema debe marcar automáticamente como "gasto hormiga" toda transacción d
 > **CA02.** Dado que existen transacciones marcadas como "gasto hormiga" en un periodo determinado, cuando el estudiante consulta su resumen financiero, entonces el sistema muestra el porcentaje que estos gastos representan sobre el total de egresos del periodo.
 
 > **CA03.** Dado que un estudiante registra un egreso con un monto mayor al umbral configurado, cuando la transacción se guarda, entonces el sistema no la marca como "gasto hormiga".
+
+> **CA04.** Dado que un estudiante considera que un egreso suyo fue innecesario, cuando lo marca según su propio criterio, entonces el sistema registra esa marca sin alterar la marca automática de la transacción.
+
+> **CA05.** Dado que un estudiante considera que un egreso marcado automáticamente como hormiga sí era necesario (ej. su pasaje diario), cuando indica su criterio en contra, entonces el sistema registra esa opinión y la marca automática permanece intacta.
+
+> **CA06.** Dado que un estudiante no expresa ningún criterio sobre un egreso, cuando consulta la transacción, entonces esta permanece sin marca del estudiante y ello no se interpreta como "no es gasto hormiga".
 
 ---
 
