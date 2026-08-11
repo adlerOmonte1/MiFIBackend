@@ -57,6 +57,18 @@ describe("Transaccion", () => {
       expect(transaccion.esGastoHormiga).toBe(false);
       expect(transaccion.umbralHormigaAplicado).toBeNull();
     });
+
+    it("borra la marca previa si la transacción se edita de egreso a ingreso (RF-13, RF-38)", () => {
+      const transaccion = crearTransaccion({ tipo: "egreso", monto: 8 });
+      transaccion.marcarComoGastoHormiga(UMBRAL);
+      expect(transaccion.esGastoHormiga).toBe(true);
+
+      transaccion.tipo = "ingreso";
+      transaccion.marcarComoGastoHormiga(UMBRAL);
+
+      expect(transaccion.esGastoHormiga).toBe(false);
+      expect(transaccion.umbralHormigaAplicado).toBeNull();
+    });
   });
 
   describe("indicarCriterioUsuario (RF-55, D-15)", () => {

@@ -33,7 +33,8 @@ export class Transaccion {
   categoriaId: string;
   metaAhorroId: string | null;
   monto: number;
-  readonly tipo: TipoTransaccion;
+  /** Editable (RF-13): si cambia de egreso a ingreso, marcarComoGastoHormiga() debe volver a correr. */
+  tipo: TipoTransaccion;
   fecha: Date;
   readonly origen: OrigenTransaccion;
   /** RF-38 — marca automática por umbral. Solo la modifica marcarComoGastoHormiga(). */
@@ -74,12 +75,18 @@ export class Transaccion {
    * snapshot del valor usado, para que la marca sea reproducible aunque el
    * umbral cambie entre estudios.
    *
-   * No aplica a ingresos: para ellos no hace nada (guarda de RF-38, "la regla
-   * aplica únicamente a transacciones de tipo egreso"), así el llamador no
-   * necesita preguntar el tipo antes de invocarla.
+   * Si no es egreso, BORRA cualquier marca previa en vez de solo no poner una
+   * nueva — necesario para RF-13: si una transacción se edita de egreso a
+   * ingreso, no puede quedar con una marca de hormiga de cuando era egreso
+   * (RF-38, "nunca a ingresos"). Así el llamador puede invocarla siempre que
+   * cambie tipo o monto, sin preguntar el tipo antes.
    */
   marcarComoGastoHormiga(umbral: number): void {
-    if (!this.esEgreso()) return;
+    if (!this.esEgreso()) {
+      this.esGastoHormiga = false;
+      this.umbralHormigaAplicado = null;
+      return;
+    }
 
     this.esGastoHormiga = this.monto <= umbral;
     this.umbralHormigaAplicado = umbral;
