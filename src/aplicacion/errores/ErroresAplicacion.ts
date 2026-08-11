@@ -70,3 +70,10 @@ export class NoAutenticadoError extends ErrorAplicacion {
     super("NO_AUTENTICADO", mensaje);
   }
 }
+
+/** RF-50, D-05 — anti-IDOR: mismo error si no existe o si es de otro usuario (nunca se distingue). */
+export class TransaccionNoEncontradaError extends ErrorAplicacion {
+  constructor() {
+    super("TRANSACCION_NO_ENCONTRADA", "Transacción no encontrada.");
+  }
+}
