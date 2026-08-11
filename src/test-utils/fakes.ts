@@ -1,10 +1,19 @@
 import { randomUUID } from "node:crypto";
+import { Categoria } from "../dominio/entidades/Categoria";
 import { Sesion } from "../dominio/entidades/Sesion";
+import { Transaccion } from "../dominio/entidades/Transaccion";
 import { Usuario } from "../dominio/entidades/Usuario";
+import type { ICategoriaRepository } from "../dominio/repositorios/ICategoriaRepository";
 import type {
   DatosNuevaSesion,
   ISesionRepository,
 } from "../dominio/repositorios/ISesionRepository";
+import type {
+  DatosNuevaTransaccion,
+  FiltrosTransacciones,
+  ITransaccionRepository,
+  ResultadoListaTransacciones,
+} from "../dominio/repositorios/ITransaccionRepository";
 import type {
   DatosNuevoUsuario,
   IUsuarioRepository,
@@ -77,6 +86,93 @@ export class SesionRepositoryFalso implements ISesionRepository {
 
   async revocarPorJti(jti: string): Promise<void> {
     this.sesiones.get(jti)?.revocar();
+  }
+}
+
+export class TransaccionRepositoryFalso implements ITransaccionRepository {
+  private readonly transacciones = new Map<string, Transaccion>();
+
+  async buscarPorId(id: string): Promise<Transaccion | null> {
+    return this.transacciones.get(id) ?? null;
+  }
+
+  async listar(filtros: FiltrosTransacciones): Promise<ResultadoListaTransacciones> {
+    let resultado = [...this.transacciones.values()].filter(
+      (t) => t.usuarioId === filtros.usuarioId,
+    );
+    if (filtros.tipo) resultado = resultado.filter((t) => t.tipo === filtros.tipo);
+    if (filtros.categoriaId) {
+      resultado = resultado.filter((t) => t.categoriaId === filtros.categoriaId);
+    }
+    if (filtros.fechaInicio) {
+      const desde = filtros.fechaInicio;
+      resultado = resultado.filter((t) => t.fecha.getTime() >= desde.getTime());
+    }
+    if (filtros.fechaFin) {
+      const hasta = filtros.fechaFin;
+      resultado = resultado.filter((t) => t.fecha.getTime() <= hasta.getTime());
+    }
+    resultado.sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
+
+    const total = resultado.length;
+    const inicio = (filtros.pagina - 1) * filtros.tamanoPagina;
+    const datos = resultado.slice(inicio, inicio + filtros.tamanoPagina);
+
+    return { datos, total };
+  }
+
+  async crear(datos: DatosNuevaTransaccion): Promise<Transaccion> {
+    const transaccion = new Transaccion({
+      id: randomUUID(),
+      usuarioId: datos.usuarioId,
+      categoriaId: datos.categoriaId,
+      metaAhorroId: datos.metaAhorroId,
+      monto: datos.monto,
+      tipo: datos.tipo,
+      fecha: datos.fecha,
+      origen: datos.origen,
+      esGastoHormiga: datos.esGastoHormiga,
+      esGastoHormigaUsuario: null,
+      umbralHormigaAplicado: datos.umbralHormigaAplicado,
+      imagenUrl: datos.imagenUrl,
+      fechaCreacion: new Date(),
+    });
+    this.transacciones.set(transaccion.id, transaccion);
+    return transaccion;
+  }
+
+  async actualizar(transaccion: Transaccion): Promise<void> {
+    this.transacciones.set(transaccion.id, transaccion);
+  }
+
+  async eliminar(id: string): Promise<void> {
+    this.transacciones.delete(id);
+  }
+
+  async listarPorPeriodo(
+    usuarioId: string,
+    fechaInicio: Date,
+    fechaFin: Date,
+  ): Promise<Transaccion[]> {
+    return [...this.transacciones.values()].filter(
+      (t) =>
+        t.usuarioId === usuarioId &&
+        t.fecha.getTime() >= fechaInicio.getTime() &&
+        t.fecha.getTime() <= fechaFin.getTime(),
+    );
+  }
+}
+
+export class CategoriaRepositoryFalso implements ICategoriaRepository {
+  private readonly categorias = new Map<string, Categoria>();
+
+  async buscarPorId(id: string): Promise<Categoria | null> {
+    return this.categorias.get(id) ?? null;
+  }
+
+  /** Fuera del contrato de ICategoriaRepository — solo para armar el escenario en las pruebas. */
+  agregar(categoria: Categoria): void {
+    this.categorias.set(categoria.id, categoria);
   }
 }
 

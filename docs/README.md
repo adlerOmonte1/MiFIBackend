@@ -55,6 +55,7 @@ Controllers (Presentación)
 | # | Documento | Contenido | Cuándo consultarlo |
 |:--|:--|:--|:--|
 | — | **README.md** (este archivo) | Resumen, índice y decisiones consolidadas | Siempre, primero |
+| — | **[ESTADO_PROYECTO.md](ESTADO_PROYECTO.md)** | Documento vivo: en qué paso/sprint estamos, decisiones tomadas durante la construcción, deuda técnica pendiente | **Al retomar el proyecto en una sesión nueva — leer antes que nada más** |
 | 1 | [HistoriasUsuario.md](HistoriasUsuario.md) | Backlog de HU con criterios de aceptación (Gherkin) | Para entender el "qué" desde el usuario |
 | 2 | [RequerimientosFuncionales.md](RequerimientosFuncionales.md) | RF-01…RF-52 trazados a su HU de origen | Para implementar una funcionalidad concreta |
 | 3 | [DiagramaCasosUso.md](DiagramaCasosUso.md) | Actores, casos de uso y relaciones «include»/precedencia | Para ver el alcance global del sistema |

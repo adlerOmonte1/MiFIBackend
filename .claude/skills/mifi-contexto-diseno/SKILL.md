@@ -2,7 +2,7 @@
 name: mifi-contexto-diseno
 description: Índice y reglas de uso del paquete de diseño de MiFi (Historias de Usuario, Requerimientos Funcionales y No Funcionales, Entidad-Relación, Diagrama de Clases y Componentes, Wireframes, contrato OpenAPI, registro de decisiones ADR). Úsalo ANTES de implementar, diseñar o explicar cualquier funcionalidad del backend de MiFi, para saber qué documento consultar y no inventar entidades, endpoints o reglas de negocio que no estén documentados. Se activa con tareas como "implementa X", "agrega el endpoint Y", "qué campos tiene la tabla Z", "cómo funciona el flujo de W", o cualquier trabajo dentro del repositorio MiFiBackend.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   proyecto: MiFi
 ---
 
@@ -26,6 +26,7 @@ opera para que se cumpla automáticamente.
 
 | Tarea | Documento |
 |:--|:--|
+| **Retomar el proyecto en una sesión nueva, saber en qué paso quedamos** | **`docs/ESTADO_PROYECTO.md`** — leer primero, siempre |
 | Entender el sistema completo, punto de partida | `docs/README.md` |
 | Entender el "qué" desde el usuario | `docs/HistoriasUsuario.md` |
 | Implementar una funcionalidad concreta | `docs/RequerimientosFuncionales.md` (busca el RF-XX) |
@@ -57,6 +58,9 @@ cualquier código nuevo:
   snapshot por transacción (`umbral_hormiga_aplicado`).
 - **D-13 / D-14**: categorías propias del usuario y meta de ahorro con
   fecha límite opcional (decisiones tomadas al revisar `Wireframes.md`).
+- **D-15**: doble marca de gasto hormiga — automática por umbral (RF-38,
+  inmutable, alimenta el indicador de la tesis) + criterio propio del
+  estudiante (RF-55, opcional, no sobrescribe a la automática).
 
 ## Trazabilidad obligatoria
 
