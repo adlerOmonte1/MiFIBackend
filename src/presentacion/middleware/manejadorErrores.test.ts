@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import {
+  ConsentimientoRequeridoError,
   CorreoYaRegistradoError,
   ErrorAplicacion,
 } from "../../aplicacion/errores/ErroresAplicacion";
@@ -28,6 +29,18 @@ describe("manejadorErrores", () => {
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith({
       codigo: "CORREO_YA_REGISTRADO",
+      mensaje: expect.any(String),
+    });
+  });
+
+  it("mapea CONSENTIMIENTO_REQUERIDO a 403, como declara el contrato (RF-49)", () => {
+    const res = crearRes();
+
+    manejadorErrores(new ConsentimientoRequeridoError(), req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      codigo: "CONSENTIMIENTO_REQUERIDO",
       mensaje: expect.any(String),
     });
   });

@@ -43,6 +43,20 @@ export class ConsentimientoYaAceptadoError extends ErrorAplicacion {
   }
 }
 
+/**
+ * RF-49, CON-01 — el estudiante está autenticado, pero todavía no aceptó el
+ * consentimiento informado, así que las funcionalidades financieras siguen
+ * bloqueadas. Es distinto de NO_AUTENTICADO: acá sabemos quién es.
+ */
+export class ConsentimientoRequeridoError extends ErrorAplicacion {
+  constructor() {
+    super(
+      "CONSENTIMIENTO_REQUERIDO",
+      "Debes aceptar el consentimiento informado para usar esta funcionalidad.",
+    );
+  }
+}
+
 /** D-05 — anti-IDOR: se usa también cuando el recurso pertenece a otro usuario. */
 export class UsuarioNoEncontradoError extends ErrorAplicacion {
   constructor() {
