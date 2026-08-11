@@ -53,6 +53,7 @@ classDiagram
         +String nombre
         +Boolean esPredefinida
         +esPropiaDe(usuarioId) Boolean
+        +puedeSerUsadaPor(usuarioId) Boolean
     }
 
     class MetaAhorro {

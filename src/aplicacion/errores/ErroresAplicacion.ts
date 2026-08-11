@@ -77,3 +77,13 @@ export class TransaccionNoEncontradaError extends ErrorAplicacion {
     super("TRANSACCION_NO_ENCONTRADA", "Transacción no encontrada.");
   }
 }
+
+/**
+ * RF-36, RF-50 — mismo error tanto si la categoría no existe como si es
+ * propia de otro estudiante: nunca se distingue (anti-IDOR).
+ */
+export class CategoriaNoEncontradaError extends ErrorAplicacion {
+  constructor() {
+    super("CATEGORIA_NO_ENCONTRADA", "Categoría no encontrada.");
+  }
+}

@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { Categoria } from "../dominio/entidades/Categoria";
 import { Sesion } from "../dominio/entidades/Sesion";
 import { Transaccion } from "../dominio/entidades/Transaccion";
 import { Usuario } from "../dominio/entidades/Usuario";
+import type { ICategoriaRepository } from "../dominio/repositorios/ICategoriaRepository";
 import type {
   DatosNuevaSesion,
   ISesionRepository,
@@ -145,6 +147,19 @@ export class TransaccionRepositoryFalso implements ITransaccionRepository {
 
   async eliminar(id: string): Promise<void> {
     this.transacciones.delete(id);
+  }
+}
+
+export class CategoriaRepositoryFalso implements ICategoriaRepository {
+  private readonly categorias = new Map<string, Categoria>();
+
+  async buscarPorId(id: string): Promise<Categoria | null> {
+    return this.categorias.get(id) ?? null;
+  }
+
+  /** Fuera del contrato de ICategoriaRepository — solo para armar el escenario en las pruebas. */
+  agregar(categoria: Categoria): void {
+    this.categorias.set(categoria.id, categoria);
   }
 }
 
