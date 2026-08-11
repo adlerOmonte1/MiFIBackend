@@ -47,4 +47,10 @@ export interface ITransaccionRepository {
   /** Persiste el estado actual de la entidad (monto, categoría, fecha, ambas marcas de hormiga). */
   actualizar(transaccion: Transaccion): Promise<void>;
   eliminar(id: string): Promise<void>;
+  /**
+   * RF-40, RF-41 — todas las transacciones del periodo, SIN paginar: el
+   * dashboard necesita sumarlas todas, no mostrarlas de a páginas. Aceptable
+   * en memoria por RNF-03 (hasta 1000 transacciones/usuario, ≤3s).
+   */
+  listarPorPeriodo(usuarioId: string, fechaInicio: Date, fechaFin: Date): Promise<Transaccion[]>;
 }

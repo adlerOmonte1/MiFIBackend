@@ -148,6 +148,19 @@ export class TransaccionRepositoryFalso implements ITransaccionRepository {
   async eliminar(id: string): Promise<void> {
     this.transacciones.delete(id);
   }
+
+  async listarPorPeriodo(
+    usuarioId: string,
+    fechaInicio: Date,
+    fechaFin: Date,
+  ): Promise<Transaccion[]> {
+    return [...this.transacciones.values()].filter(
+      (t) =>
+        t.usuarioId === usuarioId &&
+        t.fecha.getTime() >= fechaInicio.getTime() &&
+        t.fecha.getTime() <= fechaFin.getTime(),
+    );
+  }
 }
 
 export class CategoriaRepositoryFalso implements ICategoriaRepository {
