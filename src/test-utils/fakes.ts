@@ -1,9 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { Categoria } from "../dominio/entidades/Categoria";
+import { MetaAhorro } from "../dominio/entidades/MetaAhorro";
 import { Sesion } from "../dominio/entidades/Sesion";
 import { Transaccion } from "../dominio/entidades/Transaccion";
 import { Usuario } from "../dominio/entidades/Usuario";
 import type { ICategoriaRepository } from "../dominio/repositorios/ICategoriaRepository";
+import type {
+  DatosNuevaMetaAhorro,
+  IMetaAhorroRepository,
+} from "../dominio/repositorios/IMetaAhorroRepository";
 import type {
   DatosNuevaSesion,
   ISesionRepository,
@@ -183,6 +188,48 @@ export class CategoriaRepositoryFalso implements ICategoriaRepository {
   /** Fuera del contrato de ICategoriaRepository — solo para armar el escenario en las pruebas. */
   agregar(categoria: Categoria): void {
     this.categorias.set(categoria.id, categoria);
+  }
+}
+
+export class MetaAhorroRepositoryFalso implements IMetaAhorroRepository {
+  private readonly metas = new Map<string, MetaAhorro>();
+
+  async buscarPorId(id: string): Promise<MetaAhorro | null> {
+    return this.metas.get(id) ?? null;
+  }
+
+  async listar(usuarioId: string): Promise<MetaAhorro[]> {
+    return [...this.metas.values()].filter((m) => m.usuarioId === usuarioId);
+  }
+
+  async crear(datos: DatosNuevaMetaAhorro): Promise<MetaAhorro> {
+    const meta = new MetaAhorro({
+      id: randomUUID(),
+      usuarioId: datos.usuarioId,
+      nombre: datos.nombre,
+      montoObjetivo: datos.montoObjetivo,
+      fechaLimite: datos.fechaLimite,
+      estado: "activa",
+      fechaCreacion: new Date(),
+    });
+    this.metas.set(meta.id, meta);
+    return meta;
+  }
+
+  async marcarInactiva(id: string): Promise<MetaAhorro> {
+    const meta = this.metas.get(id);
+    if (!meta) throw new Error("meta no encontrada en el fake");
+    meta.estado = "inactiva";
+    return meta;
+  }
+
+  async eliminar(id: string): Promise<void> {
+    this.metas.delete(id);
+  }
+
+  /** Fuera del contrato de IMetaAhorroRepository — solo para armar el escenario en las pruebas. */
+  agregar(meta: MetaAhorro): void {
+    this.metas.set(meta.id, meta);
   }
 }
 

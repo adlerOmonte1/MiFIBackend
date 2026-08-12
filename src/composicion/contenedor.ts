@@ -12,6 +12,7 @@ import { ObtenerTransaccionUseCase } from "../aplicacion/casos-uso/ObtenerTransa
 import { RegistrarTransaccionUseCase } from "../aplicacion/casos-uso/RegistrarTransaccionUseCase";
 import { RegistrarUsuarioUseCase } from "../aplicacion/casos-uso/RegistrarUsuarioUseCase";
 import { PrismaCategoriaRepository } from "../infraestructura/repositorios/PrismaCategoriaRepository";
+import { PrismaMetaAhorroRepository } from "../infraestructura/repositorios/PrismaMetaAhorroRepository";
 import { PrismaSesionRepository } from "../infraestructura/repositorios/PrismaSesionRepository";
 import { PrismaTransaccionRepository } from "../infraestructura/repositorios/PrismaTransaccionRepository";
 import { PrismaUsuarioRepository } from "../infraestructura/repositorios/PrismaUsuarioRepository";
@@ -67,6 +68,7 @@ export function crearApiRouter(): Router {
   const sesionRepository = new PrismaSesionRepository();
   const transaccionRepository = new PrismaTransaccionRepository();
   const categoriaRepository = new PrismaCategoriaRepository();
+  const metaAhorroRepository = new PrismaMetaAhorroRepository();
   const hashService = new BcryptHashService();
   const tokenService = new JwtTokenService(resolverJwtSecret());
   const umbralGastoHormiga = resolverUmbralGastoHormiga();
@@ -90,6 +92,7 @@ export function crearApiRouter(): Router {
   const registrarTransaccionUseCase = new RegistrarTransaccionUseCase(
     transaccionRepository,
     categoriaRepository,
+    metaAhorroRepository,
     umbralGastoHormiga,
   );
   const listarTransaccionesUseCase = new ListarTransaccionesUseCase(transaccionRepository);
@@ -97,6 +100,7 @@ export function crearApiRouter(): Router {
   const editarTransaccionUseCase = new EditarTransaccionUseCase(
     transaccionRepository,
     categoriaRepository,
+    metaAhorroRepository,
     umbralGastoHormiga,
   );
   const eliminarTransaccionUseCase = new EliminarTransaccionUseCase(transaccionRepository);
