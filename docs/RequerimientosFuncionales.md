@@ -160,4 +160,27 @@
 
 ---
 
+## ADENDA — Los movimientos de ahorro no son consumo (ver ADR D-16)
+
+> **Motivo:** el ahorro se registra apartando plata en una meta (modelo
+> "alcancía": un egreso vinculado a la meta es un **aporte**, un ingreso
+> vinculado es un **retiro**). Sin esta precisión, apartar S/ 10 se contaba
+> como gasto hormiga e inflaba el indicador de RF-39 — el estudiante que
+> más ahorraba aparecía como el que más gasto hormiga tenía, invirtiendo el
+> sentido de la hipótesis. Detectado en la revisión de Sprint 3.
+
+| RF | Descripción | HU de origen |
+|---|---|---|
+| RF-57 | El sistema debe tratar toda transacción vinculada a una meta de ahorro como un **movimiento de ahorro**, no como consumo ni ingreso corriente. | AHO-02, CAT-02 |
+| RF-58 | El sistema **no debe** aplicar la marca automática de gasto hormiga (RF-38) a los movimientos de ahorro, cualquiera sea su monto. | CAT-02 |
+| RF-59 | El sistema debe **excluir** los movimientos de ahorro del total de ingresos, del total de egresos, del gasto agrupado por categoría (RF-37) y del porcentaje de gasto hormiga (RF-39) del dashboard. | DSH-01, CAT-01 |
+
+> **Precisión sobre RF-40:** el "ahorro del periodo" del dashboard es el
+> superávit del consumo corriente (ingresos − egresos, sin movimientos de
+> ahorro). Apartar plata en una meta **no lo reduce**: de ese superávit sale
+> justamente lo que el estudiante puede apartar. Cuánto hay acumulado en
+> cada meta se consulta por separado (RF-33, AHO-02).
+
+---
+
 ---
