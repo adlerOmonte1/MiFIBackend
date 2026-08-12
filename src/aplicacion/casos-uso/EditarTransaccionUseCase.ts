@@ -1,8 +1,11 @@
 import type { TipoTransaccion, Transaccion } from "../../dominio/entidades/Transaccion";
 import type { ICategoriaRepository } from "../../dominio/repositorios/ICategoriaRepository";
+import type { IMetaAhorroRepository } from "../../dominio/repositorios/IMetaAhorroRepository";
 import type { ITransaccionRepository } from "../../dominio/repositorios/ITransaccionRepository";
 import {
   CategoriaNoEncontradaError,
+  MetaAhorroInactivaError,
+  MetaAhorroNoEncontradaError,
   TransaccionNoEncontradaError,
 } from "../errores/ErroresAplicacion";
 
@@ -10,6 +13,8 @@ export interface DatosEdicionTransaccion {
   transaccionId: string;
   usuarioId: string;
   categoriaId: string;
+  /** RF-33 — reemplazo completo como el resto de los campos: undefined/null = sin meta (desvincula). */
+  metaAhorroId?: string | null;
   monto: number;
   tipo: TipoTransaccion;
   fecha: Date;
@@ -22,6 +27,7 @@ export class EditarTransaccionUseCase {
   constructor(
     private readonly transaccionRepository: ITransaccionRepository,
     private readonly categoriaRepository: ICategoriaRepository,
+    private readonly metaAhorroRepository: IMetaAhorroRepository,
     /** RF-38, D-08 — mismo umbral vigente que al crear (congelado durante la medición). */
     private readonly umbralGastoHormiga: number,
   ) {}
@@ -39,7 +45,21 @@ export class EditarTransaccionUseCase {
       throw new CategoriaNoEncontradaError();
     }
 
+    const metaAhorroId = datos.metaAhorroId ?? null;
+    if (metaAhorroId !== null) {
+      // RF-33, RF-50 — mismo error anti-IDOR que categoriaId si no existe o es de otro.
+      const meta = await this.metaAhorroRepository.buscarPorId(metaAhorroId);
+      if (!meta || !meta.perteneceA(datos.usuarioId)) {
+        throw new MetaAhorroNoEncontradaError();
+      }
+      // RF-32/AHO-01 — una meta inactiva ya no admite aportes ni retiros nuevos.
+      if (meta.estado === "inactiva") {
+        throw new MetaAhorroInactivaError();
+      }
+    }
+
     transaccion.categoriaId = datos.categoriaId;
+    transaccion.metaAhorroId = metaAhorroId;
     transaccion.monto = datos.monto;
     transaccion.tipo = datos.tipo;
     transaccion.fecha = datos.fecha;
