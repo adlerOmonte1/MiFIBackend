@@ -1,5 +1,9 @@
 import type { Transaccion as FilaTransaccion } from "../../generated/prisma/client";
-import { Transaccion, type TipoTransaccion, type OrigenTransaccion } from "../../dominio/entidades/Transaccion";
+import {
+  Transaccion,
+  type TipoTransaccion,
+  type OrigenTransaccion,
+} from "../../dominio/entidades/Transaccion";
 import type {
   DatosNuevaTransaccion,
   FiltrosTransacciones,
@@ -101,7 +105,11 @@ export class PrismaTransaccionRepository implements ITransaccionRepository {
     await prisma.transaccion.delete({ where: { id } });
   }
 
-  async listarPorPeriodo(usuarioId: string, fechaInicio: Date, fechaFin: Date): Promise<Transaccion[]> {
+  async listarPorPeriodo(
+    usuarioId: string,
+    fechaInicio: Date,
+    fechaFin: Date,
+  ): Promise<Transaccion[]> {
     const filas = await prisma.transaccion.findMany({
       where: { usuarioId, fecha: { gte: fechaInicio, lte: fechaFin } },
     });
