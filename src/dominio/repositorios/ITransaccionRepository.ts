@@ -53,4 +53,10 @@ export interface ITransaccionRepository {
    * en memoria por RNF-03 (hasta 1000 transacciones/usuario, ≤3s).
    */
   listarPorPeriodo(usuarioId: string, fechaInicio: Date, fechaFin: Date): Promise<Transaccion[]>;
+  /**
+   * RF-33, RF-35 — todas las transacciones vinculadas a una meta de ahorro
+   * (ambos tipos), SIN paginar: el caso de uso las clasifica por tipo para
+   * calcular MetaAhorro.calcularMontoAhorrado() (modelo de alcancía).
+   */
+  listarPorMeta(metaAhorroId: string): Promise<Transaccion[]>;
 }

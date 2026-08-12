@@ -1,17 +1,22 @@
 import { Router } from "express";
 import { AceptarConsentimientoUseCase } from "../aplicacion/casos-uso/AceptarConsentimientoUseCase";
 import { CerrarSesionUseCase } from "../aplicacion/casos-uso/CerrarSesionUseCase";
+import { CrearMetaAhorroUseCase } from "../aplicacion/casos-uso/CrearMetaAhorroUseCase";
 import { EditarTransaccionUseCase } from "../aplicacion/casos-uso/EditarTransaccionUseCase";
+import { EliminarMetaAhorroUseCase } from "../aplicacion/casos-uso/EliminarMetaAhorroUseCase";
 import { EliminarTransaccionUseCase } from "../aplicacion/casos-uso/EliminarTransaccionUseCase";
 import { IniciarSesionUseCase } from "../aplicacion/casos-uso/IniciarSesionUseCase";
 import { ListarCategoriasUseCase } from "../aplicacion/casos-uso/ListarCategoriasUseCase";
+import { ListarMetasAhorroUseCase } from "../aplicacion/casos-uso/ListarMetasAhorroUseCase";
 import { ListarTransaccionesUseCase } from "../aplicacion/casos-uso/ListarTransaccionesUseCase";
+import { ObtenerMetaAhorroUseCase } from "../aplicacion/casos-uso/ObtenerMetaAhorroUseCase";
 import { ObtenerPerfilUseCase } from "../aplicacion/casos-uso/ObtenerPerfilUseCase";
 import { ObtenerResumenDashboardUseCase } from "../aplicacion/casos-uso/ObtenerResumenDashboardUseCase";
 import { ObtenerTransaccionUseCase } from "../aplicacion/casos-uso/ObtenerTransaccionUseCase";
 import { RegistrarTransaccionUseCase } from "../aplicacion/casos-uso/RegistrarTransaccionUseCase";
 import { RegistrarUsuarioUseCase } from "../aplicacion/casos-uso/RegistrarUsuarioUseCase";
 import { PrismaCategoriaRepository } from "../infraestructura/repositorios/PrismaCategoriaRepository";
+import { PrismaMetaAhorroRepository } from "../infraestructura/repositorios/PrismaMetaAhorroRepository";
 import { PrismaSesionRepository } from "../infraestructura/repositorios/PrismaSesionRepository";
 import { PrismaTransaccionRepository } from "../infraestructura/repositorios/PrismaTransaccionRepository";
 import { PrismaUsuarioRepository } from "../infraestructura/repositorios/PrismaUsuarioRepository";
@@ -21,6 +26,7 @@ import { AuthController } from "../presentacion/controllers/AuthController";
 import { CategoriaController } from "../presentacion/controllers/CategoriaController";
 import { ConsentimientoController } from "../presentacion/controllers/ConsentimientoController";
 import { DashboardController } from "../presentacion/controllers/DashboardController";
+import { MetaAhorroController } from "../presentacion/controllers/MetaAhorroController";
 import { TransaccionController } from "../presentacion/controllers/TransaccionController";
 import { crearAuthMiddleware } from "../presentacion/middleware/authMiddleware";
 import { crearConsentimientoMiddleware } from "../presentacion/middleware/consentimientoMiddleware";
@@ -28,6 +34,7 @@ import { crearAuthRoutes } from "../presentacion/rutas/authRoutes";
 import { crearCategoriaRoutes } from "../presentacion/rutas/categoriaRoutes";
 import { crearConsentimientoRoutes } from "../presentacion/rutas/consentimientoRoutes";
 import { crearDashboardRoutes } from "../presentacion/rutas/dashboardRoutes";
+import { crearMetaAhorroRoutes } from "../presentacion/rutas/metaAhorroRoutes";
 import { crearTransaccionRoutes } from "../presentacion/rutas/transaccionRoutes";
 import { crearUsuarioRoutes } from "../presentacion/rutas/usuarioRoutes";
 
@@ -67,6 +74,7 @@ export function crearApiRouter(): Router {
   const sesionRepository = new PrismaSesionRepository();
   const transaccionRepository = new PrismaTransaccionRepository();
   const categoriaRepository = new PrismaCategoriaRepository();
+  const metaAhorroRepository = new PrismaMetaAhorroRepository();
   const hashService = new BcryptHashService();
   const tokenService = new JwtTokenService(resolverJwtSecret());
   const umbralGastoHormiga = resolverUmbralGastoHormiga();
@@ -90,6 +98,7 @@ export function crearApiRouter(): Router {
   const registrarTransaccionUseCase = new RegistrarTransaccionUseCase(
     transaccionRepository,
     categoriaRepository,
+    metaAhorroRepository,
     umbralGastoHormiga,
   );
   const listarTransaccionesUseCase = new ListarTransaccionesUseCase(transaccionRepository);
@@ -97,6 +106,7 @@ export function crearApiRouter(): Router {
   const editarTransaccionUseCase = new EditarTransaccionUseCase(
     transaccionRepository,
     categoriaRepository,
+    metaAhorroRepository,
     umbralGastoHormiga,
   );
   const eliminarTransaccionUseCase = new EliminarTransaccionUseCase(transaccionRepository);
@@ -104,6 +114,19 @@ export function crearApiRouter(): Router {
   const obtenerResumenDashboardUseCase = new ObtenerResumenDashboardUseCase(
     transaccionRepository,
     categoriaRepository,
+  );
+  const crearMetaAhorroUseCase = new CrearMetaAhorroUseCase(metaAhorroRepository);
+  const listarMetasAhorroUseCase = new ListarMetasAhorroUseCase(
+    metaAhorroRepository,
+    transaccionRepository,
+  );
+  const obtenerMetaAhorroUseCase = new ObtenerMetaAhorroUseCase(
+    metaAhorroRepository,
+    transaccionRepository,
+  );
+  const eliminarMetaAhorroUseCase = new EliminarMetaAhorroUseCase(
+    metaAhorroRepository,
+    transaccionRepository,
   );
 
   // Presentación
@@ -125,6 +148,12 @@ export function crearApiRouter(): Router {
   );
   const categoriaController = new CategoriaController(listarCategoriasUseCase);
   const dashboardController = new DashboardController(obtenerResumenDashboardUseCase);
+  const metaAhorroController = new MetaAhorroController(
+    crearMetaAhorroUseCase,
+    listarMetasAhorroUseCase,
+    obtenerMetaAhorroUseCase,
+    eliminarMetaAhorroUseCase,
+  );
 
   const apiRouter = Router();
   apiRouter.use("/auth", crearAuthRoutes(authController, authMiddleware));
@@ -141,6 +170,10 @@ export function crearApiRouter(): Router {
   apiRouter.use(
     "/dashboard",
     crearDashboardRoutes(dashboardController, authMiddleware, consentimientoMiddleware),
+  );
+  apiRouter.use(
+    "/metas-ahorro",
+    crearMetaAhorroRoutes(metaAhorroController, authMiddleware, consentimientoMiddleware),
   );
 
   return apiRouter;

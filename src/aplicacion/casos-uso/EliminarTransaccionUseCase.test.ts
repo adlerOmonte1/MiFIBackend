@@ -1,16 +1,26 @@
 import { TransaccionNoEncontradaError } from "../errores/ErroresAplicacion";
 import { Categoria } from "../../dominio/entidades/Categoria";
-import { CategoriaRepositoryFalso, TransaccionRepositoryFalso } from "../../test-utils/fakes";
+import {
+  CategoriaRepositoryFalso,
+  MetaAhorroRepositoryFalso,
+  TransaccionRepositoryFalso,
+} from "../../test-utils/fakes";
 import { EliminarTransaccionUseCase } from "./EliminarTransaccionUseCase";
 import { RegistrarTransaccionUseCase } from "./RegistrarTransaccionUseCase";
 
 async function crearEscenario() {
   const transaccionRepository = new TransaccionRepositoryFalso();
   const categoriaRepository = new CategoriaRepositoryFalso();
+  const metaAhorroRepository = new MetaAhorroRepositoryFalso();
   categoriaRepository.agregar(
     new Categoria({ id: "comida", usuarioId: null, nombre: "Comida", esPredefinida: true }),
   );
-  const registrar = new RegistrarTransaccionUseCase(transaccionRepository, categoriaRepository, 15);
+  const registrar = new RegistrarTransaccionUseCase(
+    transaccionRepository,
+    categoriaRepository,
+    metaAhorroRepository,
+    15,
+  );
   const eliminar = new EliminarTransaccionUseCase(transaccionRepository);
 
   const transaccion = await registrar.ejecutar({

@@ -87,3 +87,17 @@ export class CategoriaNoEncontradaError extends ErrorAplicacion {
     super("CATEGORIA_NO_ENCONTRADA", "Categoría no encontrada.");
   }
 }
+
+/** RF-33, RF-50 — mismo error si la meta no existe o es de otro estudiante (anti-IDOR). */
+export class MetaAhorroNoEncontradaError extends ErrorAplicacion {
+  constructor() {
+    super("META_AHORRO_NO_ENCONTRADA", "Meta de ahorro no encontrada.");
+  }
+}
+
+/** RF-32/AHO-01 — una meta inactiva ya no admite aportes ni retiros nuevos. */
+export class MetaAhorroInactivaError extends ErrorAplicacion {
+  constructor() {
+    super("META_AHORRO_INACTIVA", "La meta de ahorro está inactiva y no admite más transacciones.");
+  }
+}

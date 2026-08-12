@@ -115,4 +115,9 @@ export class PrismaTransaccionRepository implements ITransaccionRepository {
     });
     return filas.map(aDominio);
   }
+
+  async listarPorMeta(metaAhorroId: string): Promise<Transaccion[]> {
+    const filas = await prisma.transaccion.findMany({ where: { metaAhorroId } });
+    return filas.map(aDominio);
+  }
 }

@@ -1,5 +1,9 @@
 import { Categoria } from "../../dominio/entidades/Categoria";
-import { CategoriaRepositoryFalso, TransaccionRepositoryFalso } from "../../test-utils/fakes";
+import {
+  CategoriaRepositoryFalso,
+  MetaAhorroRepositoryFalso,
+  TransaccionRepositoryFalso,
+} from "../../test-utils/fakes";
 import { ObtenerResumenDashboardUseCase } from "./ObtenerResumenDashboardUseCase";
 import { RegistrarTransaccionUseCase } from "./RegistrarTransaccionUseCase";
 
@@ -9,6 +13,7 @@ const HOY = new Date();
 async function crearEscenario() {
   const transaccionRepository = new TransaccionRepositoryFalso();
   const categoriaRepository = new CategoriaRepositoryFalso();
+  const metaAhorroRepository = new MetaAhorroRepositoryFalso();
   categoriaRepository.agregar(
     new Categoria({ id: "comida", usuarioId: null, nombre: "Comida", esPredefinida: true }),
   );
@@ -18,6 +23,7 @@ async function crearEscenario() {
   const registrar = new RegistrarTransaccionUseCase(
     transaccionRepository,
     categoriaRepository,
+    metaAhorroRepository,
     UMBRAL,
   );
   const resumen = new ObtenerResumenDashboardUseCase(transaccionRepository, categoriaRepository);

@@ -1,9 +1,16 @@
 import {
   CategoriaNoEncontradaError,
+  MetaAhorroInactivaError,
+  MetaAhorroNoEncontradaError,
   TransaccionNoEncontradaError,
 } from "../errores/ErroresAplicacion";
 import { Categoria } from "../../dominio/entidades/Categoria";
-import { CategoriaRepositoryFalso, TransaccionRepositoryFalso } from "../../test-utils/fakes";
+import { MetaAhorro } from "../../dominio/entidades/MetaAhorro";
+import {
+  CategoriaRepositoryFalso,
+  MetaAhorroRepositoryFalso,
+  TransaccionRepositoryFalso,
+} from "../../test-utils/fakes";
 import { EditarTransaccionUseCase } from "./EditarTransaccionUseCase";
 import { RegistrarTransaccionUseCase } from "./RegistrarTransaccionUseCase";
 
@@ -12,6 +19,7 @@ const UMBRAL = 15;
 async function crearEscenario() {
   const transaccionRepository = new TransaccionRepositoryFalso();
   const categoriaRepository = new CategoriaRepositoryFalso();
+  const metaAhorroRepository = new MetaAhorroRepositoryFalso();
   categoriaRepository.agregar(
     new Categoria({ id: "comida", usuarioId: null, nombre: "Comida", esPredefinida: true }),
   );
@@ -21,9 +29,15 @@ async function crearEscenario() {
   const registrar = new RegistrarTransaccionUseCase(
     transaccionRepository,
     categoriaRepository,
+    metaAhorroRepository,
     UMBRAL,
   );
-  const editar = new EditarTransaccionUseCase(transaccionRepository, categoriaRepository, UMBRAL);
+  const editar = new EditarTransaccionUseCase(
+    transaccionRepository,
+    categoriaRepository,
+    metaAhorroRepository,
+    UMBRAL,
+  );
 
   const transaccion = await registrar.ejecutar({
     usuarioId: "usuario-1",
@@ -33,7 +47,14 @@ async function crearEscenario() {
     fecha: new Date("2026-08-01"),
   });
 
-  return { editar, registrar, transaccionRepository, categoriaRepository, transaccion };
+  return {
+    editar,
+    registrar,
+    transaccionRepository,
+    categoriaRepository,
+    metaAhorroRepository,
+    transaccion,
+  };
 }
 
 describe("EditarTransaccionUseCase (RF-13, RF-15)", () => {
@@ -205,5 +226,124 @@ describe("EditarTransaccionUseCase (RF-13, RF-15)", () => {
     });
 
     expect(editada.esGastoHormigaUsuario).toBeNull();
+  });
+
+  describe("vinculación con meta de ahorro (RF-33, RF-50)", () => {
+    it("vincula la transacción a una meta propia", async () => {
+      const { editar, transaccion, metaAhorroRepository } = await crearEscenario();
+      metaAhorroRepository.agregar(
+        new MetaAhorro({
+          id: "meta-1",
+          usuarioId: "usuario-1",
+          nombre: "Celular",
+          montoObjetivo: 2000,
+          fechaLimite: null,
+          estado: "activa",
+          fechaCreacion: new Date("2026-01-01"),
+        }),
+      );
+
+      const editada = await editar.ejecutar({
+        transaccionId: transaccion.id,
+        usuarioId: "usuario-1",
+        categoriaId: "comida",
+        metaAhorroId: "meta-1",
+        monto: 8,
+        tipo: "egreso",
+        fecha: transaccion.fecha,
+      });
+
+      expect(editada.metaAhorroId).toBe("meta-1");
+    });
+
+    it("desvincula la meta si no se envía metaAhorroId (reemplazo completo)", async () => {
+      const { editar, transaccion, metaAhorroRepository } = await crearEscenario();
+      metaAhorroRepository.agregar(
+        new MetaAhorro({
+          id: "meta-1",
+          usuarioId: "usuario-1",
+          nombre: "Celular",
+          montoObjetivo: 2000,
+          fechaLimite: null,
+          estado: "activa",
+          fechaCreacion: new Date("2026-01-01"),
+        }),
+      );
+      await editar.ejecutar({
+        transaccionId: transaccion.id,
+        usuarioId: "usuario-1",
+        categoriaId: "comida",
+        metaAhorroId: "meta-1",
+        monto: 8,
+        tipo: "egreso",
+        fecha: transaccion.fecha,
+      });
+
+      const editada = await editar.ejecutar({
+        transaccionId: transaccion.id,
+        usuarioId: "usuario-1",
+        categoriaId: "comida",
+        monto: 8,
+        tipo: "egreso",
+        fecha: transaccion.fecha,
+        // sin metaAhorroId esta vez
+      });
+
+      expect(editada.metaAhorroId).toBeNull();
+    });
+
+    it("rechaza vincular a la meta de OTRO usuario (anti-IDOR)", async () => {
+      const { editar, transaccion, metaAhorroRepository } = await crearEscenario();
+      metaAhorroRepository.agregar(
+        new MetaAhorro({
+          id: "meta-de-otro",
+          usuarioId: "usuario-2",
+          nombre: "Secreta",
+          montoObjetivo: 2000,
+          fechaLimite: null,
+          estado: "activa",
+          fechaCreacion: new Date("2026-01-01"),
+        }),
+      );
+
+      await expect(
+        editar.ejecutar({
+          transaccionId: transaccion.id,
+          usuarioId: "usuario-1",
+          categoriaId: "comida",
+          metaAhorroId: "meta-de-otro",
+          monto: 8,
+          tipo: "egreso",
+          fecha: transaccion.fecha,
+        }),
+      ).rejects.toThrow(MetaAhorroNoEncontradaError);
+    });
+
+    it("rechaza vincular a una meta inactiva (RF-32/AHO-01)", async () => {
+      const { editar, transaccion, metaAhorroRepository } = await crearEscenario();
+      metaAhorroRepository.agregar(
+        new MetaAhorro({
+          id: "meta-inactiva",
+          usuarioId: "usuario-1",
+          nombre: "Vieja",
+          montoObjetivo: 2000,
+          fechaLimite: null,
+          estado: "inactiva",
+          fechaCreacion: new Date("2026-01-01"),
+        }),
+      );
+
+      await expect(
+        editar.ejecutar({
+          transaccionId: transaccion.id,
+          usuarioId: "usuario-1",
+          categoriaId: "comida",
+          metaAhorroId: "meta-inactiva",
+          monto: 8,
+          tipo: "egreso",
+          fecha: transaccion.fecha,
+        }),
+      ).rejects.toThrow(MetaAhorroInactivaError);
+    });
   });
 });

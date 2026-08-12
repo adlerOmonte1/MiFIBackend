@@ -7,14 +7,12 @@ import type { ObtenerTransaccionUseCase } from "../../aplicacion/casos-uso/Obten
 import type { RegistrarTransaccionUseCase } from "../../aplicacion/casos-uso/RegistrarTransaccionUseCase";
 import { aRespuestaTransaccion } from "../mapeadores/transaccionResponse";
 
-// docs/openapi.yaml -> TransaccionInput. metaAhorroId NO se incluye a
-// propósito: Sprint 3 (ver nota en RegistrarTransaccionUseCase), los casos
-// de uso de Sprint 2 no lo aceptan, así que aunque el cliente lo mande se
-// ignora acá mismo.
+// docs/openapi.yaml -> TransaccionInput.
 const esquemaTransaccionInput = z.object({
   monto: z.number().positive(), // RF-10
   tipo: z.enum(["ingreso", "egreso"]),
   categoriaId: z.string().uuid(),
+  metaAhorroId: z.string().uuid().nullable().optional(), // RF-33
   // RF-11 — comparación por calendario UTC (ver convención de fechas del proyecto), no por hora exacta.
   fecha: z.iso.date().refine((f) => f <= new Date().toISOString().slice(0, 10), {
     message: "La fecha no puede ser futura (RF-11).",
@@ -48,6 +46,8 @@ export class TransaccionController {
       monto: datos.monto,
       tipo: datos.tipo,
       fecha: new Date(`${datos.fecha}T00:00:00.000Z`),
+      // exactOptionalPropertyTypes: omitido = no mandar la clave (el caso de uso trata undefined como null).
+      ...(datos.metaAhorroId !== undefined && { metaAhorroId: datos.metaAhorroId }),
     });
     res.status(201).json(aRespuestaTransaccion(transaccion));
   };
@@ -85,6 +85,8 @@ export class TransaccionController {
       monto: datos.monto,
       tipo: datos.tipo,
       fecha: new Date(`${datos.fecha}T00:00:00.000Z`),
+      // Reemplazo completo: omitido = sin meta (desvincula), igual que categoriaId/monto/etc.
+      ...(datos.metaAhorroId !== undefined && { metaAhorroId: datos.metaAhorroId }),
       // undefined = no tocar (ver DatosEdicionTransaccion); no enviar la
       // clave en vez de mandarla en undefined, exactOptionalPropertyTypes.
       ...(datos.esGastoHormigaUsuario !== undefined && {

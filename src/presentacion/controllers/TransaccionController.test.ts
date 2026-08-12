@@ -86,12 +86,23 @@ describe("TransaccionController", () => {
       });
     });
 
-    it("ignora metaAhorroId aunque el cliente lo mande (Sprint 3 pendiente)", async () => {
+    it("pasa metaAhorroId al caso de uso cuando el cliente lo manda (RF-33)", async () => {
       const { controller, registrar } = crearController();
       const req = {
         body: { ...CUERPO_VALIDO, metaAhorroId: "550e8400-e29b-41d4-a716-446655440099" },
         usuarioId: "usuario-del-token",
       } as unknown as Request;
+
+      await controller.crear(req, crearRes());
+
+      expect(registrar).toHaveBeenCalledWith(
+        expect.objectContaining({ metaAhorroId: "550e8400-e29b-41d4-a716-446655440099" }),
+      );
+    });
+
+    it("no manda la clave metaAhorroId si el cliente la omite", async () => {
+      const { controller, registrar } = crearController();
+      const req = { body: CUERPO_VALIDO, usuarioId: "usuario-del-token" } as unknown as Request;
 
       await controller.crear(req, crearRes());
 
