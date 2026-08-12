@@ -43,6 +43,20 @@ export class ConsentimientoYaAceptadoError extends ErrorAplicacion {
   }
 }
 
+/**
+ * RF-49, CON-01 — el estudiante está autenticado, pero todavía no aceptó el
+ * consentimiento informado, así que las funcionalidades financieras siguen
+ * bloqueadas. Es distinto de NO_AUTENTICADO: acá sabemos quién es.
+ */
+export class ConsentimientoRequeridoError extends ErrorAplicacion {
+  constructor() {
+    super(
+      "CONSENTIMIENTO_REQUERIDO",
+      "Debes aceptar el consentimiento informado para usar esta funcionalidad.",
+    );
+  }
+}
+
 /** D-05 — anti-IDOR: se usa también cuando el recurso pertenece a otro usuario. */
 export class UsuarioNoEncontradoError extends ErrorAplicacion {
   constructor() {
@@ -54,5 +68,22 @@ export class UsuarioNoEncontradoError extends ErrorAplicacion {
 export class NoAutenticadoError extends ErrorAplicacion {
   constructor(mensaje = "Token inválido, expirado o sesión revocada.") {
     super("NO_AUTENTICADO", mensaje);
+  }
+}
+
+/** RF-50, D-05 — anti-IDOR: mismo error si no existe o si es de otro usuario (nunca se distingue). */
+export class TransaccionNoEncontradaError extends ErrorAplicacion {
+  constructor() {
+    super("TRANSACCION_NO_ENCONTRADA", "Transacción no encontrada.");
+  }
+}
+
+/**
+ * RF-36, RF-50 — mismo error tanto si la categoría no existe como si es
+ * propia de otro estudiante: nunca se distingue (anti-IDOR).
+ */
+export class CategoriaNoEncontradaError extends ErrorAplicacion {
+  constructor() {
+    super("CATEGORIA_NO_ENCONTRADA", "Categoría no encontrada.");
   }
 }

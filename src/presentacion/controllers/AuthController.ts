@@ -4,7 +4,7 @@ import type { CerrarSesionUseCase } from "../../aplicacion/casos-uso/CerrarSesio
 import type { IniciarSesionUseCase } from "../../aplicacion/casos-uso/IniciarSesionUseCase";
 import type { ObtenerPerfilUseCase } from "../../aplicacion/casos-uso/ObtenerPerfilUseCase";
 import type { RegistrarUsuarioUseCase } from "../../aplicacion/casos-uso/RegistrarUsuarioUseCase";
-import type { Usuario } from "../../dominio/entidades/Usuario";
+import { aRespuestaUsuario } from "../mapeadores/usuarioResponse";
 
 // RF-01 a RF-03: forma del request, según docs/openapi.yaml (/auth/registro, /auth/login).
 const esquemaRegistro = z.object({
@@ -17,20 +17,6 @@ const esquemaLogin = z.object({
   correo: z.string().email(),
   password: z.string().min(1),
 });
-
-/** Nunca se devuelve passwordHash al cliente. */
-function aRespuestaUsuario(usuario: Usuario) {
-  return {
-    id: usuario.id,
-    nombre: usuario.nombre,
-    correo: usuario.correo,
-    rol: usuario.rol,
-    consentimientoAceptado: usuario.consentimientoAceptado,
-    fechaConsentimiento: usuario.fechaConsentimiento,
-    versionConsentimiento: usuario.versionConsentimiento,
-    fechaRegistro: usuario.fechaRegistro,
-  };
-}
 
 /** Solo traduce HTTP <-> caso de uso; sin lógica de negocio (ver skill mifi-arquitectura-solid). */
 export class AuthController {

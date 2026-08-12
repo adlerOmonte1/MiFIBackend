@@ -222,6 +222,7 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/TransaccionCreada" }
         "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
     put:
       tags: [Transacciones]
@@ -236,6 +237,7 @@ paths:
         "200": { $ref: "#/components/responses/TransaccionCreada" }
         "400": { $ref: "#/components/responses/ValidacionError" }
         "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
     delete:
       tags: [Transacciones]
@@ -244,6 +246,7 @@ paths:
       responses:
         "204": { description: Eliminada. }
         "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
 
   # ───────────────────────── CATEGORÍAS ─────────────────────────
@@ -578,9 +581,10 @@ paths:
       description: >
         Incluye ingresos, egresos y ahorro del periodo (RF-40), monto total
         agrupado por categoría (RF-37, CAT-01) y el porcentaje de gastos
-        hormiga sobre el total de egresos del periodo (RF-39, CAT-02). Todos
-        los valores se calculan en tiempo real, sin precálculo (detalle de
-        DSH-01).
+        hormiga sobre el total de egresos del periodo (RF-39, CAT-02),
+        calculado con la marca automática por umbral, no con el criterio del
+        estudiante (D-15). Todos los valores se calculan en tiempo real, sin
+        precálculo (detalle de DSH-01).
       parameters:
         - $ref: "#/components/parameters/PeriodoFiltro"
       responses:
@@ -783,6 +787,14 @@ components:
         categoriaId: { type: string, format: uuid }
         metaAhorroId: { type: string, format: uuid, nullable: true }
         fecha: { type: string, format: date, description: "No admite fecha futura (RF-11)" }
+        esGastoHormigaUsuario:
+          type: boolean
+          nullable: true
+          description: >
+            Criterio propio del estudiante sobre si el egreso fue innecesario
+            (RF-55, D-15). Opcional; omitirlo o enviarlo null significa "sin
+            opinión", que NO equivale a false. No afecta la marca automática
+            `esGastoHormiga`, que el cliente nunca puede modificar.
 
     Transaccion:
       allOf:
@@ -791,7 +803,11 @@ components:
           properties:
             id: { type: string, format: uuid }
             origen: { type: string, enum: [manual, ocr, gmail] }
-            esGastoHormiga: { type: boolean, description: "Calculado por el backend, RF-38" }
+            esGastoHormiga:
+              type: boolean
+              description: >
+                Marca automática por umbral, calculada por el backend (RF-38).
+                Inmutable: alimenta el indicador de la investigación (D-15).
             umbralHormigaAplicado: { type: number, format: double, nullable: true, description: "Snapshot del umbral vigente al momento de crear el egreso (D-08); null para ingresos" }
             imagenUrl: { type: string, nullable: true }
             fechaCreacion: { type: string, format: date-time }

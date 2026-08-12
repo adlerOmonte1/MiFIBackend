@@ -49,6 +49,7 @@ erDiagram
         date fecha
         varchar origen
         boolean es_gasto_hormiga
+        boolean es_gasto_hormiga_usuario "NULLABLE — criterio del estudiante (D-15)"
         decimal umbral_hormiga_aplicado
         text imagen_url
         timestamp fecha_creacion
@@ -152,7 +153,8 @@ erDiagram
 | tipo | VARCHAR(10) | NOT NULL, CHECK IN ('ingreso','egreso') |
 | fecha | DATE | NOT NULL, CHECK (fecha <= CURRENT_DATE) |
 | origen | VARCHAR(10) | NOT NULL, DEFAULT 'manual', CHECK IN ('manual','ocr','gmail') |
-| es_gasto_hormiga | BOOLEAN | NOT NULL, DEFAULT false |
+| es_gasto_hormiga | BOOLEAN | NOT NULL, DEFAULT false — marca **automática** por umbral (RF-38); no editable por el estudiante |
+| es_gasto_hormiga_usuario | BOOLEAN | **NULLABLE** — criterio propio del estudiante (RF-55, D-15). `NULL` = no opinó; `true`/`false` = su juicio explícito. NULL **no** equivale a `false` |
 | umbral_hormiga_aplicado | DECIMAL(10,2) | NULLABLE — snapshot del umbral con el que se evaluó el egreso (RF-38); NULL para ingresos |
 | imagen_url | TEXT | NULLABLE |
 | fecha_creacion | TIMESTAMP | NOT NULL, DEFAULT now() |
@@ -260,6 +262,7 @@ erDiagram
 - **`conexiones_gmail.usuario_id` y `encuestas_sus.usuario_id` son UNIQUE**: modelan la relación uno-a-uno (o uno-a-cero-o-uno) — un estudiante tiene como máximo una conexión de Gmail y responde la encuesta SUS una sola vez, reforzando a nivel de base de datos la regla de negocio ya definida en las HU (GML-01 y USA-01).
 - **`registros_error` no tiene FK a usuarios**: es intencional, no un olvido — está explicado arriba.
 - **`categorias.usuario_id` es NULLABLE**: modela dos tipos de categoría en una sola tabla — predefinidas (`usuario_id = NULL`, `es_predefinida = true`, globales) y propias del estudiante (`usuario_id` con valor, `es_predefinida = false`, privadas). Evita duplicar el modelo de "categoría" solo para diferenciar el origen (D-13).
+- **`transacciones.es_gasto_hormiga_usuario` es NULLABLE y no reemplaza a `es_gasto_hormiga`**: son dos columnas a propósito (D-15). La primera guarda el criterio del estudiante (tres estados: no opinó / sí / no); la segunda, la marca automática por umbral, que es la que alimenta el indicador de la tesis y nunca se modifica. Colapsarlas en una sola columna haría imposible distinguir "el sistema lo marcó" de "el estudiante lo considera así".
 - **`metas_ahorro.fecha_limite` es NULLABLE**: una meta sin fecha límite (ej. fondo de emergencia) es válida por diseño; el cálculo de progreso (UC-AHO-02) no depende de esta columna (D-14).
 
 ---
