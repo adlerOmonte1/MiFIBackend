@@ -28,7 +28,7 @@ async function crearEscenario() {
   );
   const resumen = new ObtenerResumenDashboardUseCase(transaccionRepository, categoriaRepository);
 
-  return { resumen, registrar };
+  return { resumen, registrar, metaAhorroRepository };
 }
 
 describe("ObtenerResumenDashboardUseCase (RF-37, RF-39, RF-40, RF-41)", () => {
@@ -160,5 +160,108 @@ describe("ObtenerResumenDashboardUseCase (RF-37, RF-39, RF-40, RF-41)", () => {
     const r = await resumen.ejecutar({ usuarioId: "usuario-1" });
 
     expect(r.periodo).toBe("mes");
+  });
+
+  /**
+   * Regresión de un bug real encontrado en la revisión de Sprint 3 (ADR
+   * D-16). Antes de la corrección, estas cuatro pruebas fallaban: los
+   * aportes a una meta se contaban como consumo y contaminaban los tres
+   * indicadores de tesis que salen del dashboard.
+   */
+  describe("movimientos de ahorro excluidos del consumo (D-16)", () => {
+    async function conMeta() {
+      const escenario = await crearEscenario();
+      const meta = await escenario.metaAhorroRepository.crear({
+        usuarioId: "usuario-1",
+        nombre: "Celular",
+        montoObjetivo: 2000,
+        fechaLimite: null,
+      });
+      return { ...escenario, meta };
+    }
+
+    it("apartar plata en una meta NO reduce el ahorro del periodo (RF-40)", async () => {
+      const { resumen, registrar, meta } = await conMeta();
+      await registrar.ejecutar({
+        usuarioId: "usuario-1",
+        categoriaId: "comida",
+        monto: 1000,
+        tipo: "ingreso",
+        fecha: HOY,
+      });
+      await registrar.ejecutar({
+        usuarioId: "usuario-1",
+        categoriaId: "comida",
+        metaAhorroId: meta.id,
+        monto: 300,
+        tipo: "egreso",
+        fecha: HOY,
+      });
+
+      const r = await resumen.ejecutar({ usuarioId: "usuario-1" });
+
+      expect(r.egresosTotal).toBe(0);
+      expect(r.ahorroTotal).toBe(1000);
+    });
+
+    it("un aporte no aparece como gasto de su categoría (RF-37)", async () => {
+      const { resumen, registrar, meta } = await conMeta();
+      await registrar.ejecutar({
+        usuarioId: "usuario-1",
+        categoriaId: "comida",
+        metaAhorroId: meta.id,
+        monto: 300,
+        tipo: "egreso",
+        fecha: HOY,
+      });
+
+      const r = await resumen.ejecutar({ usuarioId: "usuario-1" });
+
+      expect(r.gastosPorCategoria).toEqual([]);
+    });
+
+    it("un aporte chico no cuenta como gasto hormiga (RF-38, RF-39)", async () => {
+      const { resumen, registrar, meta } = await conMeta();
+      // Gasto hormiga real: una gaseosa de S/ 5.
+      await registrar.ejecutar({
+        usuarioId: "usuario-1",
+        categoriaId: "comida",
+        monto: 5,
+        tipo: "egreso",
+        fecha: HOY,
+      });
+      // Aporte de S/ 10 a la meta: bajo el umbral, pero es ahorro, no gasto.
+      await registrar.ejecutar({
+        usuarioId: "usuario-1",
+        categoriaId: "comida",
+        metaAhorroId: meta.id,
+        monto: 10,
+        tipo: "egreso",
+        fecha: HOY,
+      });
+
+      const r = await resumen.ejecutar({ usuarioId: "usuario-1" });
+
+      expect(r.egresosTotal).toBe(5);
+      expect(r.gastosHormiga.montoTotal).toBe(5);
+      expect(r.gastosHormiga.porcentajeSobreEgresos).toBe(100);
+    });
+
+    it("un retiro de la meta tampoco cuenta como ingreso corriente", async () => {
+      const { resumen, registrar, meta } = await conMeta();
+      await registrar.ejecutar({
+        usuarioId: "usuario-1",
+        categoriaId: "comida",
+        metaAhorroId: meta.id,
+        monto: 100,
+        tipo: "ingreso",
+        fecha: HOY,
+      });
+
+      const r = await resumen.ejecutar({ usuarioId: "usuario-1" });
+
+      expect(r.ingresosTotal).toBe(0);
+      expect(r.ahorroTotal).toBe(0);
+    });
   });
 });
