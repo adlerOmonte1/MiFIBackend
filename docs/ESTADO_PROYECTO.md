@@ -6,8 +6,10 @@
 > `git log --oneline -8` para confirmar que el estado real del repo coincide
 > con lo que dice acá. Si no coincide, avisá antes de seguir.
 
-*Última actualización: Sprint 2 completo y mergeado a `staging` y `main`
-(PR #21 y #22). Listo para arrancar Sprint 3 (Ahorro).*
+*Última actualización: Sprint 3 (Ahorro) completo en la rama
+`feature/rf30-rf35-ahorro` — código, pruebas y verificación E2E contra
+Supabase listos, pero **todavía no mergeado** (falta abrir y mergear el PR
+a `staging`, después `staging` → `main`).*
 
 ---
 
@@ -30,16 +32,26 @@ git dados explícitamente para que el usuario mismo los corra.
 
 ## 3. Dónde estamos AHORA MISMO
 
-- **Sprint 2 (Transacciones) está COMPLETO y mergeado**: PR #21
-  (`feature/rf09-rf15-transacciones` → `staging`) y PR #22 (`staging` →
-  `main`), ambos mergeados por el usuario. `main` y `staging` están al día.
-- La rama `feature/rf09-rf15-transacciones` ya cumplió su propósito — no
-  seguir trabajando ahí. Para Sprint 3, crear una rama nueva desde
-  `staging` (ej. `feature/rf30-rf35-ahorro`).
-- **Fase del `PlanTrabajo.md`:** Fase 3 — Desarrollo incremental,
-  **Sprint 3 (Ahorro) sin empezar**.
-- **Siguiente paso concreto: Sprint 3 / Paso 1** — entidad de dominio
-  `MetaAhorro`. Ver plan completo en la sección 5.1 de este documento.
+- **Rama activa:** `feature/rf30-rf35-ahorro` (creada desde el tip de
+  `feature/rf09-rf15-transacciones`, que ya incluía todo `staging` + el
+  commit de docs que cerró Sprint 2).
+- **Sprint 3 (Ahorro) está COMPLETO en código** (Pasos 1 a 8, ver §5.2) y
+  verificado con `curl` contra Supabase real, pero **sin PR abierto
+  todavía**. Falta: abrir PR `feature/rf30-rf35-ahorro` → `staging`,
+  correr el checklist (`mifi-checklist-pr`), mergear, y después
+  `staging` → `main`.
+- El PR chico de `ESTADO_PROYECTO.md` de la sesión anterior (PR #23) ya se
+  mergeó a `staging` — no queda pendiente. `staging` está un commit
+  adelante de `main` por eso (el usuario sincroniza `staging` → `main`
+  cuando le parece, no es automático).
+- **Fase del `PlanTrabajo.md`:** Fase 3 — Desarrollo incremental. Sprint 3
+  completo: falta el candidato a "Sprint 4" — RF-53/RF-54 (crear,
+  renombrar y eliminar categoría propia, CAT-01), lo único de las
+  historias CAT-01/CAT-02 que quedó fuera de Sprint 2. No hay plan de
+  pasos armado todavía para eso — armarlo cuando se retome.
+- **Siguiente paso concreto:** correr el checklist y abrir el/los PR de
+  Sprint 3. Después, decidir con el usuario si se sigue con RF-53/54 o con
+  otro sprint del `PlanTrabajo.md`.
 
 ## 4. Sprint 1 — Autenticación: ✅ COMPLETO, mergeado a `staging`
 
@@ -124,32 +136,57 @@ reescribió el historial porque ya estaba pusheado.
   (ausente) — se completaron con un valor generado y el default de
   `.env.example` (15) para poder levantar el servidor y probar.
 
-## 5.1. Sprint 3 — Ahorro (siguiente, sin empezar): plan de pasos
+## 5.2. Sprint 3 — Ahorro: ✅ COMPLETO en código, PR sin abrir
 
 RF-30 a RF-35, AHO-01/AHO-02. Objetivo: producir "monto ahorrado" y
-"% cumplimiento" para la tesis. Contrato ya definido en
-`docs/openapi.yaml` (`/metas-ahorro`) y modelo `MetaAhorro` en
-`prisma/schema.prisma`. Mismo patrón de pasos chicos que Sprint 2:
+"% cumplimiento" para la tesis. Rama `feature/rf30-rf35-ahorro`.
 
-| Paso | Qué es |
-|---|---|
-| 1 | Entidad de dominio `MetaAhorro` — calcula `montoAhorrado`, `porcentajeCumplimiento` (tope 100%, RF-33/34) y transición de `estado` (activa/cumplida/inactiva) |
-| 2 | Interfaz `IMetaAhorroRepository` |
-| 3 | **Cerrar deuda pendiente de Sprint 2:** `RegistrarTransaccionUseCase`/`EditarTransaccionUseCase` hoy ignoran `metaAhorroId` a propósito (comentario "Sprint 3" en el código) — habilitarlo, validando pertenencia igual que `categoriaId` (anti-IDOR) |
-| 4 | Casos de uso: `CrearMetaAhorroUseCase` (RF-30 a RF-32), `ListarMetasAhorroUseCase` con progreso en tiempo real (RF-33/34), `ObtenerMetaAhorroUseCase`, `EliminarMetaAhorroUseCase` (elimina o marca `inactiva` si tiene transacciones vinculadas, ver detalle de AHO-01/openapi) |
-| 5 | Infraestructura: `PrismaMetaAhorroRepository` |
-| 6 | Presentación: `MetaAhorroController` + rutas `/metas-ahorro` (con `authMiddleware` + `consentimientoMiddleware`) |
-| 7 | Composición en `contenedor.ts` |
-| 8 | Prueba real de punta a punta contra Supabase (script descartable primero, después Postman/manual) |
+### Decisión de negocio clave: modelo de "alcancía"
 
-**Nota:** RF-35 ("recalcular el progreso automáticamente") se cumple
-gratis con el Paso 1 + 4, si se mantiene el mismo criterio que el
-dashboard: todo se calcula en tiempo real desde las transacciones, sin
-precálculo — no hace falta lógica extra de "recálculo".
+RF-33/UC-AHO-02 dice que el monto ahorrado sale de "transacciones
+marcadas como ahorro vinculadas a la meta", pero `Transaccion.tipo` solo
+es `ingreso`/`egreso` — no existe un tercer tipo "ahorro". Se acordó con
+el usuario (dio el ejemplo real del feature "Alcancía" de Interbank):
 
-**Antes de arrancar:** crear una rama nueva desde `staging`
-(`feature/rf30-rf35-ahorro` o similar) — `feature/rf09-rf15-transacciones`
-ya está mergeada y no debe seguir recibiendo commits.
+- **Aportar a una meta** = registrar un **egreso** con `metaAhorroId`
+  apuntando a esa meta. Sale del disponible general, entra al "bolsillo".
+- **Retirar de una meta** = registrar un **ingreso** con el mismo
+  `metaAhorroId`. Vuelve al disponible general.
+- **`montoAhorrado` = Σ(egresos vinculados) − Σ(ingresos vinculados)**,
+  nunca negativo (`MetaAhorro.calcularMontoAhorrado()`).
+- El "fondo general sin meta" no es una entidad nueva: es `ahorroTotal`
+  del dashboard (ya existente en Sprint 2), sin vínculo a ninguna meta.
+- Una meta `inactiva` no admite más aportes/retiros nuevos
+  (`MetaAhorroInactivaError`, 409) — supuesto explícito, ningún RF lo pide,
+  pero es coherente con que "inactiva" es un estado terminal.
+
+### Pasos completados
+
+| Paso | Qué es | Commit(s) |
+|---|---|---|
+| **1** | Entidad `MetaAhorro` (`calcularMontoAhorrado`, `calcularProgreso`, `estadoVisible` — "cumplida" se calcula siempre en tiempo real, nunca se persiste) | `feat(dominio): entidad MetaAhorro con modelo de alcancia...` |
+| **2** | Interfaz `IMetaAhorroRepository` + `ITransaccionRepository.listarPorMeta()` | `feat(dominio): interfaz IMetaAhorroRepository...` |
+| **3** | Habilita `metaAhorroId` en `RegistrarTransaccionUseCase`/`EditarTransaccionUseCase` (cierra deuda de Sprint 2) + `MetaAhorroNoEncontradaError`/`MetaAhorroInactivaError`. Incluye `PrismaMetaAhorroRepository` adelantado del Paso 5 (era una dependencia real de compilación, no un salto de orden) | `feat(aplicacion): habilita metaAhorroId en transacciones...` |
+| **4** | Casos de uso: `CrearMetaAhorroUseCase`, `ListarMetasAhorroUseCase`, `ObtenerMetaAhorroUseCase`, `EliminarMetaAhorroUseCase` (elimina o marca inactiva) + helper compartido `calcularProgresoMeta` | `feat(aplicacion): casos de uso de MetaAhorro...` |
+| **5** | `PrismaMetaAhorroRepository` — ya cubierto en el Paso 3 | (ver Paso 3) |
+| **6, 7** | `MetaAhorroController` + rutas `/metas-ahorro`, conectado en `contenedor.ts` | `feat(presentacion): endpoint /metas-ahorro...` |
+| **8** | Prueba E2E con `curl` contra Supabase real: crear meta, validaciones RF-31, aporte (egreso vinculado), retiro (ingreso vinculado) recalcula el progreso, DELETE marca inactiva o elimina según tenga transacciones, 409 al vincular a una meta inactiva. Todo OK. | (no aplica, verificación manual) |
+
+**187 pruebas automatizadas** en total (Sprint 2 terminó en 106; Sprint 3
+sumó 81).
+
+**Hallazgo corregido sobre la marcha:** `docs/openapi.yaml` tenía el mismo
+gap que ya se había corregido en `/transacciones/{id}` — faltaba el `403
+ConsentimientoRequerido` en `GET`/`DELETE /metas-ahorro/{id}`. Se
+sincronizó: las 4 rutas de `/metas-ahorro` llevan `authMiddleware` +
+`consentimientoMiddleware` de forma uniforme.
+
+### Qué falta para cerrar Sprint 3
+
+1. Correr `mifi-checklist-pr` (ya se corrió el pipeline completo, falta el
+   resto del checklist si no se hizo en esta sesión).
+2. Abrir PR `feature/rf30-rf35-ahorro` → `staging` en GitHub, mergear.
+3. `staging` → `main` cuando el usuario lo decida (su flujo habitual).
 
 ## 6. Decisiones tomadas durante Sprint 2 (más allá del `docs/README.md` §6)
 
@@ -163,15 +200,16 @@ Todas ya están en el código como comentarios, pero acá el resumen:
 - **Umbral de gasto hormiga**: variable de entorno `UMBRAL_GASTO_HORMIGA`
   (default 15 en `.env.example`), inyectada por constructor a los casos de
   uso — nunca hardcodeada, para que sea ajustable en la calibración (D-08).
-- **`metaAhorroId` NO se acepta todavía** en ningún caso de uso de Sprint 2
-  — las metas de ahorro son Sprint 3; aceptar el campo sin poder validar
-  pertenencia sería un hueco anti-IDOR. Siempre se persiste `null`.
+- **`metaAhorroId` no se aceptaba en Sprint 2** (aceptar el campo sin poder
+  validar pertenencia hubiera sido un hueco anti-IDOR) — **resuelto en
+  Sprint 3** (§5.2, Paso 3): ahora se valida igual que `categoriaId`.
 - **`categoriaId` SÍ se valida** (`Categoria.puedeSerUsadaPor(usuarioId)`):
   predefinida (usable por cualquiera) o propia del mismo usuario — nunca la
   categoría propia de otro.
 - **`ahorroTotal` del dashboard = ingresos − egresos del periodo.**
   Supuesto explícito, ningún RF lo define con esa precisión — distinto del
-  progreso de una meta de ahorro (AHO-02, Sprint 3, concepto separado).
+  progreso de una meta de ahorro (AHO-02, concepto separado — ver el
+  modelo de "alcancía" en §5.2).
 - **"semana" = lunes a domingo calendario** que contiene la fecha de
   referencia (no una ventana móvil de 7 días). Supuesto explícito, RF-41 no
   lo especifica.
