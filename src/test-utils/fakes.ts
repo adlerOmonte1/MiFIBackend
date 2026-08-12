@@ -161,6 +161,10 @@ export class TransaccionRepositoryFalso implements ITransaccionRepository {
         t.fecha.getTime() <= fechaFin.getTime(),
     );
   }
+
+  async listarPorMeta(metaAhorroId: string): Promise<Transaccion[]> {
+    return [...this.transacciones.values()].filter((t) => t.metaAhorroId === metaAhorroId);
+  }
 }
 
 export class CategoriaRepositoryFalso implements ICategoriaRepository {
