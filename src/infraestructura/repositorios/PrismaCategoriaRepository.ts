@@ -17,4 +17,13 @@ export class PrismaCategoriaRepository implements ICategoriaRepository {
     const fila = await prisma.categoria.findUnique({ where: { id } });
     return fila ? aDominio(fila) : null;
   }
+
+  async listar(usuarioId: string): Promise<Categoria[]> {
+    // Sin RF que especifique el orden: supuesto explícito, alfabético.
+    const filas = await prisma.categoria.findMany({
+      where: { OR: [{ usuarioId: null }, { usuarioId }] },
+      orderBy: { nombre: "asc" },
+    });
+    return filas.map(aDominio);
+  }
 }

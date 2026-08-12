@@ -170,6 +170,12 @@ export class CategoriaRepositoryFalso implements ICategoriaRepository {
     return this.categorias.get(id) ?? null;
   }
 
+  async listar(usuarioId: string): Promise<Categoria[]> {
+    return [...this.categorias.values()].filter(
+      (c) => c.usuarioId === null || c.usuarioId === usuarioId,
+    );
+  }
+
   /** Fuera del contrato de ICategoriaRepository — solo para armar el escenario en las pruebas. */
   agregar(categoria: Categoria): void {
     this.categorias.set(categoria.id, categoria);
