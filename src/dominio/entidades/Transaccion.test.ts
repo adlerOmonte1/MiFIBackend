@@ -148,4 +148,59 @@ describe("Transaccion", () => {
       expect(crearTransaccion().perteneceA("usuario-2")).toBe(false);
     });
   });
+
+  describe("esMovimientoDeAhorro (D-16)", () => {
+    it("es false sin meta vinculada (consumo corriente)", () => {
+      expect(crearTransaccion({ metaAhorroId: null }).esMovimientoDeAhorro()).toBe(false);
+    });
+
+    it("es true con meta vinculada, tanto para aportes como para retiros", () => {
+      expect(
+        crearTransaccion({ metaAhorroId: "meta-1", tipo: "egreso" }).esMovimientoDeAhorro(),
+      ).toBe(true);
+      expect(
+        crearTransaccion({ metaAhorroId: "meta-1", tipo: "ingreso" }).esMovimientoDeAhorro(),
+      ).toBe(true);
+    });
+  });
+
+  /**
+   * Regresión de un bug real encontrado en la revisión de Sprint 3: apartar
+   * S/ 10 en una meta se marcaba como gasto hormiga y contaminaba el
+   * indicador central de la tesis (RF-39). Ver ADR D-16.
+   */
+  describe("marcarComoGastoHormiga con movimientos de ahorro (D-16)", () => {
+    it("NO marca un aporte a una meta, aunque el monto esté bajo el umbral", () => {
+      const aporte = crearTransaccion({ metaAhorroId: "meta-1", monto: 10, tipo: "egreso" });
+
+      aporte.marcarComoGastoHormiga(UMBRAL);
+
+      expect(aporte.esGastoHormiga).toBe(false);
+      expect(aporte.umbralHormigaAplicado).toBeNull();
+    });
+
+    it("borra la marca si una transacción marcada se vincula después a una meta (RF-13)", () => {
+      const transaccion = crearTransaccion({ monto: 10, tipo: "egreso" });
+      transaccion.marcarComoGastoHormiga(UMBRAL);
+      expect(transaccion.esGastoHormiga).toBe(true);
+
+      transaccion.metaAhorroId = "meta-1"; // el estudiante la reasigna a su meta
+      transaccion.marcarComoGastoHormiga(UMBRAL);
+
+      expect(transaccion.esGastoHormiga).toBe(false);
+      expect(transaccion.umbralHormigaAplicado).toBeNull();
+    });
+
+    it("vuelve a evaluarla como consumo si se desvincula de la meta", () => {
+      const transaccion = crearTransaccion({ metaAhorroId: "meta-1", monto: 10, tipo: "egreso" });
+      transaccion.marcarComoGastoHormiga(UMBRAL);
+      expect(transaccion.esGastoHormiga).toBe(false);
+
+      transaccion.metaAhorroId = null; // ya no era para la meta
+      transaccion.marcarComoGastoHormiga(UMBRAL);
+
+      expect(transaccion.esGastoHormiga).toBe(true);
+      expect(transaccion.umbralHormigaAplicado).toBe(UMBRAL);
+    });
+  });
 });

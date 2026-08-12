@@ -20,8 +20,10 @@ export interface ResumenDashboard {
   ingresosTotal: number;
   egresosTotal: number;
   /** Supuesto no documentado explícitamente en ningún RF: ingresos - egresos
-   *  del periodo. Distinto del progreso de una meta de ahorro (AHO-02,
-   *  Sprint 3) — acá es superávit general, no vinculado a una meta. */
+   *  del periodo, contando solo consumo corriente (D-16: los movimientos de
+   *  ahorro quedan fuera). Es el superávit del periodo: de ahí sale lo que el
+   *  estudiante puede apartar en sus metas, y por eso apartar plata NO lo
+   *  reduce. El detalle de cuánto hay en cada meta está en AHO-02. */
   ahorroTotal: number;
   gastosPorCategoria: GastoPorCategoria[];
   gastosHormiga: {
@@ -59,6 +61,14 @@ export class ObtenerResumenDashboardUseCase {
     const montoPorCategoria = new Map<string, number>();
 
     for (const transaccion of transacciones) {
+      // D-16 — un movimiento de ahorro (aporte o retiro de una meta) no es
+      // consumo ni ingreso corriente: mueve plata entre "disponible" y
+      // "apartado", no entra ni sale del presupuesto del periodo. Contarlo
+      // acá inflaba los egresos, los gastos por categoría y el porcentaje
+      // de gasto hormiga — el indicador central de la tesis (RF-39).
+      // Lo apartado en cada meta se consulta en GET /metas-ahorro.
+      if (transaccion.esMovimientoDeAhorro()) continue;
+
       if (transaccion.tipo === "ingreso") {
         ingresosTotal += transaccion.monto;
         continue;
