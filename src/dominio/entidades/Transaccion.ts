@@ -71,6 +71,16 @@ export class Transaccion {
   }
 
   /**
+   * D-16 — una transacción vinculada a una meta es un movimiento de ahorro
+   * (egreso = aporte a la alcancía, ingreso = retiro), no consumo corriente.
+   * Es lo que permite que el ahorro no contamine los indicadores de gasto
+   * de la tesis (RF-37, RF-39, RF-40).
+   */
+  esMovimientoDeAhorro(): boolean {
+    return this.metaAhorroId !== null;
+  }
+
+  /**
    * RF-38, D-08 — evalúa el egreso contra el umbral vigente y guarda el
    * snapshot del valor usado, para que la marca sea reproducible aunque el
    * umbral cambie entre estudios.
@@ -80,9 +90,14 @@ export class Transaccion {
    * ingreso, no puede quedar con una marca de hormiga de cuando era egreso
    * (RF-38, "nunca a ingresos"). Así el llamador puede invocarla siempre que
    * cambie tipo o monto, sin preguntar el tipo antes.
+   *
+   * D-16 — tampoco marca los movimientos de ahorro: apartar S/ 10 en una
+   * meta no es un gasto hormiga, es ahorro. Se borra la marca por el mismo
+   * motivo de arriba: al editar una transacción suelta para vincularla a una
+   * meta, no puede quedarle la marca de cuando era consumo.
    */
   marcarComoGastoHormiga(umbral: number): void {
-    if (!this.esEgreso()) {
+    if (!this.esEgreso() || this.esMovimientoDeAhorro()) {
       this.esGastoHormiga = false;
       this.umbralHormigaAplicado = null;
       return;

@@ -587,6 +587,13 @@ paths:
         calculado con la marca automática por umbral, no con el criterio del
         estudiante (D-15). Todos los valores se calculan en tiempo real, sin
         precálculo (detalle de DSH-01).
+
+        Solo considera **consumo corriente**: las transacciones vinculadas a
+        una meta de ahorro quedan excluidas de todos los totales (RF-59,
+        D-16), porque mueven plata entre "disponible" y "apartado" en vez de
+        entrar o salir del presupuesto. Apartar plata en una meta, entonces,
+        no reduce `ahorroTotal`. Lo acumulado en cada meta se consulta en
+        `GET /metas-ahorro`.
       parameters:
         - $ref: "#/components/parameters/PeriodoFiltro"
       responses:
@@ -787,7 +794,18 @@ components:
         monto: { type: number, format: double, exclusiveMinimum: 0, description: "RF-10" }
         tipo: { type: string, enum: [ingreso, egreso] }
         categoriaId: { type: string, format: uuid }
-        metaAhorroId: { type: string, format: uuid, nullable: true }
+        metaAhorroId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Vincula la transacción a una meta de ahorro propia (RF-33). Con
+            valor, la transacción es un movimiento de ahorro (D-16): si
+            `tipo` es "egreso" es un aporte a la meta; si es "ingreso", un
+            retiro. Los movimientos de ahorro nunca se marcan como gasto
+            hormiga y quedan fuera de todos los totales del dashboard
+            (RF-57 a RF-59). Responde 404 si la meta es de otro usuario y
+            409 si está inactiva.
         fecha: { type: string, format: date, description: "No admite fecha futura (RF-11)" }
         esGastoHormigaUsuario:
           type: boolean
@@ -810,6 +828,8 @@ components:
               description: >
                 Marca automática por umbral, calculada por el backend (RF-38).
                 Inmutable: alimenta el indicador de la investigación (D-15).
+                Siempre `false` en movimientos de ahorro (con `metaAhorroId`)
+                y en ingresos, cualquiera sea el monto (RF-58, D-16).
             umbralHormigaAplicado: { type: number, format: double, nullable: true, description: "Snapshot del umbral vigente al momento de crear el egreso (D-08); null para ingresos" }
             imagenUrl: { type: string, nullable: true }
             fechaCreacion: { type: string, format: date-time }
@@ -851,9 +871,16 @@ components:
         periodo: { type: string, enum: [semana, mes] }
         fechaInicio: { type: string, format: date }
         fechaFin: { type: string, format: date }
-        ingresosTotal: { type: number, format: double }
-        egresosTotal: { type: number, format: double }
-        ahorroTotal: { type: number, format: double }
+        ingresosTotal: { type: number, format: double, description: "Solo consumo corriente: excluye retiros de metas (RF-59, D-16)" }
+        egresosTotal: { type: number, format: double, description: "Solo consumo corriente: excluye aportes a metas (RF-59, D-16)" }
+        ahorroTotal:
+          type: number
+          format: double
+          description: >
+            Superávit del periodo (`ingresosTotal - egresosTotal`, RF-40). De
+            acá sale lo que el estudiante puede apartar en sus metas, así que
+            apartar plata NO lo reduce (D-16). Lo acumulado por meta se
+            consulta en `GET /metas-ahorro`.
         gastosPorCategoria:
           type: array
           items:

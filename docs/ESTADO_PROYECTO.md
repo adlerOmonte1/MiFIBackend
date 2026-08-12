@@ -6,10 +6,11 @@
 > `git log --oneline -8` para confirmar que el estado real del repo coincide
 > con lo que dice acá. Si no coincide, avisá antes de seguir.
 
-*Última actualización: Sprint 3 (Ahorro) completo en la rama
-`feature/rf30-rf35-ahorro` — código, pruebas y verificación E2E contra
-Supabase listos, pero **todavía no mergeado** (falta abrir y mergear el PR
-a `staging`, después `staging` → `main`).*
+*Última actualización: Sprint 3 (Ahorro) completo + revisión rigurosa de
+todo lo construido (ver §5.3), que encontró y corrigió un bug que
+contaminaba el indicador central de la tesis (ADR D-16) y un hueco real de
+pruebas de seguridad. Todo en la rama `feature/rf30-rf35-ahorro`,
+**todavía sin mergear**.*
 
 ---
 
@@ -183,10 +184,78 @@ sincronizó: las 4 rutas de `/metas-ahorro` llevan `authMiddleware` +
 
 ### Qué falta para cerrar Sprint 3
 
-1. Correr `mifi-checklist-pr` (ya se corrió el pipeline completo, falta el
-   resto del checklist si no se hizo en esta sesión).
-2. Abrir PR `feature/rf30-rf35-ahorro` → `staging` en GitHub, mergear.
-3. `staging` → `main` cuando el usuario lo decida (su flujo habitual).
+1. Abrir PR `feature/rf30-rf35-ahorro` → `staging` en GitHub, mergear.
+2. `staging` → `main` cuando el usuario lo decida (su flujo habitual).
+
+## 5.3. Revisión rigurosa (post Sprint 3) — hallazgos y correcciones
+
+Se revisó todo lo construido usando **pruebas de mutación**: introducir un
+bug a propósito y verificar si la suite lo detecta. Es la forma de
+distinguir cobertura real de cobertura decorativa.
+
+**Resultado: dominio y aplicación aprobaron 16/16 mutaciones** (tope del
+100%, invertir aportes/retiros, borrar cada chequeo anti-IDOR, cambiar
+`<=` por `<` en el umbral, usar métodos locales en vez de UTC). Esa capa
+está genuinamente protegida.
+
+### Hallazgo A — los movimientos de ahorro contaminaban 3 indicadores ✅ corregido
+
+Como un aporte a una meta se registraba como egreso común, contaminaba
+todo lo que suma egresos. Lo más grave: **apartar S/ 10 en una meta se
+marcaba como gasto hormiga**, inflando RF-39 — el indicador central de la
+tesis. Un estudiante que ahorraba de a poco aparecía con *más* gasto
+hormiga, invirtiendo el sentido de la hipótesis. Además, apartar plata
+*bajaba* el `ahorroTotal` del dashboard.
+
+Era silencioso con aportes grandes (por eso no lo detectó la E2E de
+Sprint 3: el aporte de 300 supera el umbral de 15) y aparecía con aportes
+chicos, que es justo el caso de uso real.
+
+Corregido con **ADR D-16** y la adenda RF-57/RF-58/RF-59:
+`Transaccion.esMovimientoDeAhorro()` + `marcarComoGastoHormiga()` no marca
+movimientos de ahorro + el dashboard los excluye de todos los agregados.
+Con pruebas de regresión colocadas y verificación E2E contra Supabase.
+
+### Hallazgo B — la cobertura de rutas y middlewares era ilusoria ✅ corregido
+
+`src/presentacion/rutas` marcaba **100%** porque esos archivos se
+*ejecutan* al importarse, sin que nada verificara su comportamiento. Se
+comprobó por mutación que **se podía borrar `authMiddleware` de todas las
+rutas financieras, dejándolas abiertas, con las 187 pruebas en verde**. Lo
+mismo con `consentimientoMiddleware` y con cambiar los 404 anti-IDOR a 403
+(`manejadorErrores` solo aseguraba 2 de 11 códigos).
+
+Corregido en `proteccionRutas.test.ts` (muro de 401 en las 11 rutas
+financieras + verifica que cada fábrica monte sus middlewares en cada
+ruta) y en `manejadorErrores.test.ts`. Verificado: esas mutaciones ahora
+mueren.
+
+**Hueco residual conocido:** si `contenedor.ts` pasara el middleware
+equivocado al montar una ruta, ninguna prueba automatizada lo detectaría —
+haría falta un test con token válido y sesión en base real. Hoy solo lo
+cubre la verificación manual E2E.
+
+### Hallazgo C — el schema documentaba validaciones inexistentes ✅ corregido
+
+`schema.prisma` decía `// CHECK (monto > 0) — validado en entidad de
+dominio`. Ninguna de las dos cosas era cierta: **no hay un solo `CHECK` en
+las migraciones** (Prisma no los genera) y la entidad `Transaccion` no
+valida el monto. La única defensa real es zod en el controller.
+
+Se corrigieron los comentarios y se agregó una nota al inicio del schema.
+**Pendiente de decisión:** OCR (Sprint 5) y Gmail (Sprint 6) crean
+transacciones sin pasar por esos controllers — o validan por su cuenta, o
+la validación baja al dominio antes de esos sprints.
+
+### Menores (no corregidos, no urgentes)
+
+- **N+1 queries:** `ListarMetasAhorroUseCase` consulta transacciones por
+  cada meta; el dashboard consulta la categoría dentro del loop.
+  Irrelevante a la escala del estudio (40 usuarios, RNF-03), pero conviene
+  saberlo si el volumen creciera.
+- Los repositorios Prisma no tienen pruebas automatizadas (se validan con
+  scripts descartables). Decisión razonable, pero implica que un cambio ahí
+  no lo detecta el CI.
 
 ## 6. Decisiones tomadas durante Sprint 2 (más allá del `docs/README.md` §6)
 
@@ -206,10 +275,11 @@ Todas ya están en el código como comentarios, pero acá el resumen:
 - **`categoriaId` SÍ se valida** (`Categoria.puedeSerUsadaPor(usuarioId)`):
   predefinida (usable por cualquiera) o propia del mismo usuario — nunca la
   categoría propia de otro.
-- **`ahorroTotal` del dashboard = ingresos − egresos del periodo.**
-  Supuesto explícito, ningún RF lo define con esa precisión — distinto del
-  progreso de una meta de ahorro (AHO-02, concepto separado — ver el
-  modelo de "alcancía" en §5.2).
+- **`ahorroTotal` del dashboard = ingresos − egresos del periodo**, contando
+  solo **consumo corriente**: los movimientos de ahorro quedan fuera
+  (D-16). Apartar plata en una meta no lo reduce — de ese superávit sale
+  justamente lo que se aparta. Distinto del progreso de una meta (AHO-02):
+  ver el modelo de "alcancía" en §5.2 y los hallazgos en §5.3.
 - **"semana" = lunes a domingo calendario** que contiene la fecha de
   referencia (no una ventana móvil de 7 días). Supuesto explícito, RF-41 no
   lo especifica.

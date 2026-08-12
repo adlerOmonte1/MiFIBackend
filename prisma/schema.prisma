@@ -13,6 +13,19 @@ datasource db {
   // La URL de conexión se resuelve desde prisma.config.ts -> process.env["DATABASE_URL"]
 }
 
+// NOTA SOBRE VALIDACIONES (revisión de Sprint 3)
+//
+// Los comentarios de este archivo describen las REGLAS de cada columna, no
+// restricciones que existan en la base: Prisma no genera CHECK constraints y
+// las migraciones actuales no tienen ninguno. Hasta que se agreguen (o se
+// bajen las validaciones a las entidades de dominio), la única defensa real
+// para reglas como "monto > 0" (RF-10) o "fecha no futura" (RF-11) son los
+// esquemas zod de la capa de presentación.
+//
+// Consecuencia a tener en cuenta antes de Sprint 5/6: OCR y Gmail crean
+// transacciones sin pasar por esos controllers, así que necesitan validar
+// por su cuenta o compartir la validación.
+
 // USUARIOS
 model Usuario {
   id                     String    @id @default(uuid())
@@ -75,9 +88,9 @@ model Transaccion {
   usuarioId              String    @map("usuario_id")
   categoriaId            String    @map("categoria_id")
   metaAhorroId           String?   @map("meta_ahorro_id")
-  monto                  Decimal   @db.Decimal(10, 2) // CHECK (monto > 0) — validado en entidad de dominio
-  tipo                   String    @db.VarChar(10) // CHECK IN ('ingreso','egreso')
-  fecha                  DateTime  @db.Date // CHECK (fecha <= CURRENT_DATE)
+  monto                  Decimal   @db.Decimal(10, 2) // > 0 (RF-10) — hoy se valida SOLO en TransaccionController (zod); ver nota al pie
+  tipo                   String    @db.VarChar(10) // 'ingreso' | 'egreso'
+  fecha                  DateTime  @db.Date // <= hoy (RF-11) — validado en TransaccionController (zod)
   origen                 String    @default("manual") @db.VarChar(10) // CHECK IN ('manual','ocr','gmail')
   esGastoHormiga         Boolean   @default(false) @map("es_gasto_hormiga") // automática por umbral (RF-38), no editable
   esGastoHormigaUsuario  Boolean?  @map("es_gasto_hormiga_usuario") // criterio del estudiante (RF-55, D-15); null = no opinó
@@ -99,9 +112,9 @@ model MetaAhorro {
   id             String   @id @default(uuid())
   usuarioId      String   @map("usuario_id")
   nombre         String   @db.VarChar(100)
-  montoObjetivo  Decimal   @map("monto_objetivo") @db.Decimal(10, 2) // CHECK (> 0)
-  fechaLimite    DateTime? @map("fecha_limite") @db.Date // opcional (D-14); si tiene valor, CHECK (> CURRENT_DATE al crear)
-  estado         String    @default("activa") @db.VarChar(20) // CHECK IN ('activa','cumplida','inactiva')
+  montoObjetivo  Decimal   @map("monto_objetivo") @db.Decimal(10, 2) // > 0 (RF-31) — validado en MetaAhorroController (zod)
+  fechaLimite    DateTime? @map("fecha_limite") @db.Date // opcional (D-14); si tiene valor, futura al crear (RF-31, validado en el controller)
+  estado         String    @default("activa") @db.VarChar(20) // 'activa' | 'inactiva' persistidos; 'cumplida' se calcula en tiempo real (MetaAhorro.estadoVisible), nunca se guarda
   fechaCreacion  DateTime @default(now()) @map("fecha_creacion")
 
   usuario       Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
