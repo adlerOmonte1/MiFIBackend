@@ -222,6 +222,7 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/TransaccionCreada" }
         "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
     put:
       tags: [Transacciones]
@@ -236,6 +237,7 @@ paths:
         "200": { $ref: "#/components/responses/TransaccionCreada" }
         "400": { $ref: "#/components/responses/ValidacionError" }
         "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
     delete:
       tags: [Transacciones]
@@ -244,6 +246,7 @@ paths:
       responses:
         "204": { description: Eliminada. }
         "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/ConsentimientoRequerido" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
 
   # ───────────────────────── CATEGORÍAS ─────────────────────────
